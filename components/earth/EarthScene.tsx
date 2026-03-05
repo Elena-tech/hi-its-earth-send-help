@@ -36,7 +36,7 @@ export default function EarthScene({ climate }: Props) {
 
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, el.clientWidth / el.clientHeight, 0.1, 1000);
-    camera.position.set(0, 0, 5.2);
+    camera.position.set(0, 0, 7.0);
 
     // ── Stars ─────────────────────────────────────────────────────────────────
     const N = 10000;
@@ -99,17 +99,20 @@ export default function EarthScene({ climate }: Props) {
     );
     scene.add(earth);
 
-    // ── Atmosphere ────────────────────────────────────────────────────────────
+    // ── Atmosphere — single soft glow, tight to surface ───────────────────────
     const atmoUniforms = { uCO2: uniforms.uCO2, uTemperature: uniforms.uTemperature };
-    const atmoMat = (side: THREE.Side, r: number) => new THREE.ShaderMaterial({
-      vertexShader: atmosphereVertexShader,
-      fragmentShader: atmosphereFragmentShader,
-      uniforms: atmoUniforms,
-      transparent: true, side, depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 64, 64), atmoMat(THREE.FrontSide, 1.06)));
-    scene.add(new THREE.Mesh(new THREE.SphereGeometry(1.18, 64, 64), atmoMat(THREE.BackSide, 1.18)));
+    scene.add(new THREE.Mesh(
+      new THREE.SphereGeometry(1.08, 64, 64),
+      new THREE.ShaderMaterial({
+        vertexShader: atmosphereVertexShader,
+        fragmentShader: atmosphereFragmentShader,
+        uniforms: atmoUniforms,
+        transparent: true,
+        side: THREE.BackSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      })
+    ));
 
     // ── Drag to rotate ────────────────────────────────────────────────────────
     let drag = false;

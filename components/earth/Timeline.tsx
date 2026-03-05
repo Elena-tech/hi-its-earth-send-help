@@ -64,7 +64,7 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
       {/* Year display */}
       <div style={{
         textAlign: "center",
-        marginBottom: "10px",
+        marginBottom: "4px",
         display: "flex",
         alignItems: "baseline",
         justifyContent: "center",

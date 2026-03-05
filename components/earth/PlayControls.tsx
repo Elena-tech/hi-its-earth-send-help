@@ -13,7 +13,7 @@ export default function PlayControls({ playing, speed, onToggle, onSpeedChange }
   return (
     <div style={{
       position: "absolute",
-      bottom: "120px",
+      bottom: "160px",
       left: "50%",
       transform: "translateX(-50%)",
       display: "flex",
