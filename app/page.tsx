@@ -117,52 +117,70 @@ export default function Home() {
         <EarthScene climate={climate} />
       </div>
 
-      {/* Top-left headline */}
-      <div style={{
-        position: "absolute", top: isMobile ? "16px" : "28px",
-        left: isMobile ? "16px" : "32px",
-        zIndex: 10, fontFamily: "'Space Mono', monospace",
-        maxWidth: isMobile ? "60vw" : "50vw",
-      }}>
-        <h1 className="headline" style={{
-          fontSize: isMobile ? "11px" : "clamp(13px, 1.8vw, 19px)",
-          color: "rgba(255,255,255,0.88)",
-          fontWeight: 400, letterSpacing: "0.03em", lineHeight: 1.5,
-          transition: "all 0.8s ease",
+      {/* Mobile: stacked header — stats then headline */}
+      {/* Desktop: headline left, stats top-right */}
+      {isMobile ? (
+        <div style={{
+          position: "absolute", top: "16px", left: "16px", right: "16px",
+          zIndex: 10, fontFamily: "'Space Mono', monospace",
+          display: "flex", flexDirection: "column", gap: "8px",
         }}>
-          {headline}
-        </h1>
-        <p className="subtitle" style={{
-          marginTop: "5px", fontSize: "8px",
-          color: "rgba(255,255,255,0.22)",
-          letterSpacing: "0.18em", textTransform: "uppercase",
-        }}>
-          nasa · noaa · nsidc · ipcc ar6
-        </p>
-      </div>
-
-      {/* Top-right stats */}
-      <div className="stats-strip" style={{
-        position: "absolute",
-        top: isMobile ? "16px" : "28px",
-        right: isMobile ? "16px" : "24px",
-        display: "flex",
-        gap: isMobile ? "10px" : "18px",
-        zIndex: 10,
-        background: "rgba(0,0,0,0.55)",
-        backdropFilter: "blur(10px)",
-        padding: isMobile ? "8px 12px" : "10px 16px",
-        borderRadius: "8px",
-        border: "1px solid rgba(255,255,255,0.07)",
-        fontFamily: "'Space Mono', monospace",
-      }}>
-        {stats.map(({ label, value, colour }) => (
-          <div key={label} className="stats-item" style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "7px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.12em", marginBottom: "3px" }}>{label}</div>
-            <div style={{ fontSize: isMobile ? "11px" : "13px", color: colour, fontWeight: "bold", transition: "color 0.5s" }}>{value}</div>
+          {/* Stats row */}
+          <div style={{
+            display: "flex", gap: "10px",
+            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)",
+            padding: "8px 14px", borderRadius: "8px",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}>
+            {stats.map(({ label, value, colour }) => (
+              <div key={label} style={{ textAlign: "center", flex: 1 }}>
+                <div style={{ fontSize: "7px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.12em", marginBottom: "3px" }}>{label}</div>
+                <div style={{ fontSize: "11px", color: colour, fontWeight: "bold" }}>{value}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          {/* Headline */}
+          <p style={{
+            fontSize: "11px", color: "rgba(255,255,255,0.8)",
+            letterSpacing: "0.03em", lineHeight: 1.5,
+            transition: "all 0.8s ease",
+          }}>{headline}</p>
+        </div>
+      ) : (
+        <>
+          <div style={{
+            position: "absolute", top: "28px", left: "32px",
+            zIndex: 10, fontFamily: "'Space Mono', monospace", maxWidth: "50vw",
+          }}>
+            <h1 style={{
+              fontSize: "clamp(13px, 1.8vw, 19px)",
+              color: "rgba(255,255,255,0.88)",
+              fontWeight: 400, letterSpacing: "0.03em", lineHeight: 1.5,
+              transition: "all 0.8s ease",
+            }}>{headline}</h1>
+            <p style={{
+              marginTop: "5px", fontSize: "8px",
+              color: "rgba(255,255,255,0.22)",
+              letterSpacing: "0.18em", textTransform: "uppercase",
+            }}>nasa · noaa · nsidc · ipcc ar6</p>
+          </div>
+          <div style={{
+            position: "absolute", top: "28px", right: "24px",
+            display: "flex", gap: "18px", zIndex: 10,
+            background: "rgba(0,0,0,0.55)", backdropFilter: "blur(10px)",
+            padding: "10px 16px", borderRadius: "8px",
+            border: "1px solid rgba(255,255,255,0.07)",
+            fontFamily: "'Space Mono', monospace",
+          }}>
+            {stats.map(({ label, value, colour }) => (
+              <div key={label} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "7px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.12em", marginBottom: "3px" }}>{label}</div>
+                <div style={{ fontSize: "13px", color: colour, fontWeight: "bold", transition: "color 0.5s" }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Event card */}
       <EventCard event={activeEvent} />
