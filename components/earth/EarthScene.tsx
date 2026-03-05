@@ -14,6 +14,7 @@ export interface ClimateState {
   iceMelt: number;
   deforestation: number;
   seaLevel: number;
+  tempAnomaly: number; // actual °C
 }
 
 interface Props { climate: ClimateState; isMobile?: boolean }
@@ -91,6 +92,7 @@ export default function EarthScene({ climate, isMobile }: Props) {
       uIceMelt:       { value: climate.iceMelt },
       uDeforestation: { value: climate.deforestation },
       uSeaLevel:      { value: climate.seaLevel },
+      uTempAnomaly:   { value: 0 },
     };
 
     const earth = new THREE.Mesh(
@@ -189,6 +191,7 @@ export default function EarthScene({ climate, isMobile }: Props) {
     s.uniforms.uIceMelt.value       = climate.iceMelt;
     s.uniforms.uDeforestation.value = climate.deforestation;
     s.uniforms.uSeaLevel.value      = climate.seaLevel;
+    s.uniforms.uTempAnomaly.value   = climate.tempAnomaly;
   }, [climate]);
 
   return <div ref={mountRef} style={{ width: "100%", height: "100%" }} />;

@@ -38,6 +38,7 @@ export default function Home() {
     iceMelt:       data.iceMelt,
     deforestation: data.deforestation,
     seaLevel:      data.seaLevel,
+    tempAnomaly:   data.tempC,
   };
 
   const tick = useCallback((now: number) => {

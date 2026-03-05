@@ -25,6 +25,7 @@ export const earthFragmentShader = `
   uniform float uIceMelt;       // 0 = full ice caps, 1 = no ice
   uniform float uDeforestation; // 0 = pristine, 1 = stripped
   uniform float uSeaLevel;      // 0 = normal, 1 = +2m
+  uniform float uTempAnomaly;   // actual °C anomaly (can be negative)
 
   varying vec2 vUv;
   varying vec3 vNormal;
@@ -104,6 +105,44 @@ export const earthFragmentShader = `
     float rim = pow(1.0 - abs(dot(vNormal, viewDir)), 3.5);
     vec3 co2rim = mix(vec3(0.3, 0.6, 1.0), vec3(0.65, 0.35, 0.05), uCO2 * uCO2);
     base = mix(base, co2rim, rim * 0.18 * (0.4 + uCO2 * 0.6));
+
+    // ── Temperature heatmap overlay ───────────────────────────────────────────
+    // Regional anomaly: Arctic amplification + land/ocean differential
+    float latDeg  = (vUv.y - 0.5) * 180.0;               // –90 (S) to +90 (N)
+    float absLat  = abs(latDeg) / 90.0;                   // 0=equator, 1=pole
+    // Arctic warms 3x faster, Antarctic 2x
+    float polarFactor = 1.0 + absLat * absLat * 2.5;
+    // Land warms 1.5x faster than ocean
+    float landFactor  = mix(1.0, 1.5, isLand);
+    // Small regional noise so it doesn't look uniform
+    float regionNoise = fbm(vUv * 4.0 + vec2(0.7, 0.3)) * 0.4 - 0.2;
+
+    // Local anomaly in °C
+    float localAnomaly = uTempAnomaly * polarFactor * landFactor + regionNoise * abs(uTempAnomaly);
+
+    // Map anomaly to heatmap colour
+    // -1°C → blue, 0 → transparent, +1 → yellow, +2 → orange, +3+ → red
+    vec3 heatColour;
+    float heatAlpha;
+    if (localAnomaly < 0.0) {
+      // Cool anomaly — blue tint
+      heatColour = vec3(0.1, 0.3, 1.0);
+      heatAlpha  = clamp(-localAnomaly * 0.3, 0.0, 0.25);
+    } else {
+      // Warm anomaly — yellow → orange → red
+      float t = clamp(localAnomaly / 4.0, 0.0, 1.0);
+      vec3 yellow = vec3(1.0, 0.95, 0.0);
+      vec3 orange = vec3(1.0, 0.40, 0.0);
+      vec3 red    = vec3(0.85, 0.0, 0.0);
+      vec3 dark   = vec3(0.45, 0.0, 0.0);
+      if (t < 0.33)      heatColour = mix(yellow, orange, t / 0.33);
+      else if (t < 0.66) heatColour = mix(orange, red,   (t - 0.33) / 0.33);
+      else               heatColour = mix(red,    dark,  (t - 0.66) / 0.34);
+      heatAlpha = clamp(localAnomaly * 0.18, 0.0, 0.55);
+    }
+
+    // Only show on day side
+    base = mix(base, heatColour, heatAlpha * dayFrac * (1.0 - cloudLayer * 0.7));
 
     gl_FragColor = vec4(base, 1.0);
   }
