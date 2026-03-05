@@ -1,132 +1,115 @@
-// Earth vertex shader
+// ── Earth ─────────────────────────────────────────────────────────────────────
 export const earthVertexShader = `
   varying vec2 vUv;
   varying vec3 vNormal;
   varying vec3 vPosition;
 
   void main() {
-    vUv = uv;
-    vNormal = normalize(normalMatrix * normal);
+    vUv      = uv;
+    vNormal  = normalize(normalMatrix * normal);
     vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
-// Earth fragment shader — procedural land/ocean with climate overlay
 export const earthFragmentShader = `
+  precision highp float;
+
+  uniform sampler2D uDayTexture;
+  uniform sampler2D uNightTexture;
+  uniform sampler2D uCloudsTexture;
+
   uniform float uTime;
-  uniform float uTemperature;   // 0.0 = pre-industrial, 1.0 = +4°C
-  uniform float uCO2;           // 0.0 = 280ppm, 1.0 = 800ppm
-  uniform float uIceMelt;       // 0.0 = full ice, 1.0 = no ice
-  uniform float uDeforestation; // 0.0 = pristine, 1.0 = stripped
-  uniform float uSeaLevel;      // 0.0 = normal, 1.0 = +2m
+  uniform float uTemperature;   // 0 = pre-industrial, 1 = +4°C
+  uniform float uCO2;           // 0 = 280ppm, 1 = 800ppm
+  uniform float uIceMelt;       // 0 = full ice caps, 1 = no ice
+  uniform float uDeforestation; // 0 = pristine, 1 = stripped
+  uniform float uSeaLevel;      // 0 = normal, 1 = +2m
 
   varying vec2 vUv;
   varying vec3 vNormal;
   varying vec3 vPosition;
 
-  // Hash / noise
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
+  // Noise for ice edge / cloud variation
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
   float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(hash(i), hash(i + vec2(1,0)), f.x),
-      mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x),
-      f.y
-    );
+    vec2 i = floor(p), f = fract(p);
+    f = f*f*(3.0-2.0*f);
+    return mix(mix(hash(i),hash(i+vec2(1,0)),f.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x), f.y);
   }
-  float fbm(vec2 p) {
-    float v = 0.0;
-    float a = 0.5;
-    for (int i = 0; i < 6; i++) {
-      v += a * noise(p);
-      p *= 2.0;
-      a *= 0.5;
-    }
-    return v;
-  }
-
-  // Sphere → lat/lon
-  vec2 latlon(vec2 uv) {
-    return vec2((uv.y - 0.5) * 3.14159, (uv.x - 0.5) * 6.28318);
-  }
+  float fbm(vec2 p){float v=0.0,a=0.5;for(int i=0;i<5;i++){v+=a*noise(p);p*=2.0;a*=0.5;}return v;}
 
   void main() {
-    vec2 uv = vUv;
+    vec3 viewDir = normalize(-vPosition);
+    vec3 sunDir  = normalize(vec3(2.0, 0.5, 1.5));
 
-    // Procedural continent mask
-    float cont = fbm(uv * 3.5 + vec2(1.3, 0.7));
-    cont += fbm(uv * 7.0 + vec2(3.1, 1.9)) * 0.3;
-    float isLand = smoothstep(0.48, 0.52, cont);
+    // ── Base textures ─────────────────────────────────────────────────────────
+    vec3 dayColor   = texture2D(uDayTexture,    vUv).rgb;
+    vec3 nightColor = texture2D(uNightTexture,  vUv).rgb;
+    float clouds    = texture2D(uCloudsTexture, vUv).r;
 
-    // Latitude (0 = equator, 1 = poles)
-    float lat = abs(uv.y - 0.5) * 2.0;
+    // Bump cloud layer (slow drift)
+    vec2 cloudUv = vUv + vec2(uTime * 0.002, 0.0);
+    float cloudLayer = texture2D(uCloudsTexture, cloudUv).r;
 
-    // Sea level rise — flood low coastal land
-    float coastalFlood = smoothstep(0.48, 0.50 + uSeaLevel * 0.03, cont);
-    isLand = mix(isLand, coastalFlood, uSeaLevel * 0.8);
+    // ── Day/night blend ───────────────────────────────────────────────────────
+    float daylight = dot(vNormal, sunDir);
+    float dayFrac  = smoothstep(-0.25, 0.25, daylight);
 
-    // === BASE COLOURS ===
-    // Ocean — deep blue to warming teal/brown
-    vec3 oceanDeep  = vec3(0.02, 0.08, 0.25);
-    vec3 oceanWarm  = vec3(0.10, 0.18, 0.22);
-    vec3 ocean = mix(oceanDeep, oceanWarm, uTemperature * 0.8);
+    // Night: show city lights
+    vec3 nightGlow = nightColor * 1.8;
+    vec3 base = mix(nightGlow, dayColor, dayFrac);
 
-    // Land — green to brown/grey as deforestation increases
-    vec3 forest   = vec3(0.08, 0.28, 0.08);
-    vec3 barren   = vec3(0.38, 0.28, 0.15);
-    vec3 desert   = vec3(0.55, 0.42, 0.22);
-    float forestFade = uDeforestation + fbm(uv * 12.0) * 0.3 * uDeforestation;
-    vec3 land = mix(forest, mix(barren, desert, uTemperature), clamp(forestFade, 0.0, 1.0));
+    // ── Climate effects on land colour ────────────────────────────────────────
+    // Detect greenery (high green, low red/blue) — forests
+    float greenness = smoothstep(0.0, 0.3, dayColor.g - max(dayColor.r, dayColor.b));
+    // Heat tint — shift green land toward brown/orange
+    vec3 heatTint = vec3(0.55, 0.25, 0.05);
+    base = mix(base, mix(base, heatTint, 0.6), greenness * uDeforestation);
+    // Additional warming redness on all land
+    float isLand = 1.0 - smoothstep(0.05, 0.2, dayColor.b - dayColor.r);
+    vec3 warmTint = vec3(0.7, 0.3, 0.1);
+    base = mix(base, mix(base, warmTint, 0.4 * isLand), uTemperature * 0.5);
 
-    // Temperature heatmap tint on land
-    vec3 heatTint = vec3(0.9, 0.15, 0.0);
-    land = mix(land, heatTint, uTemperature * 0.35);
+    // ── Sea level rise — darken/blue coastal areas ────────────────────────────
+    float shallowOcean = smoothstep(0.1, 0.25, dayColor.b) * (1.0 - isLand);
+    vec3 floodColor = vec3(0.04, 0.12, 0.35);
+    float coastFlood = smoothstep(0.0, 0.5, isLand * (1.0 - smoothstep(0.0, 0.25, dayColor.b)));
+    base = mix(base, floodColor, coastFlood * uSeaLevel * 0.6);
 
-    // Base colour
-    vec3 colour = mix(ocean, land, isLand);
+    // ── Ice caps ──────────────────────────────────────────────────────────────
+    float lat = abs(vUv.y - 0.5) * 2.0; // 0=equator, 1=poles
+    float iceEdge    = mix(0.80, 0.35, uIceMelt);
+    float iceNoise   = fbm(vUv * 8.0) * 0.12;
+    float iceFactor  = smoothstep(iceEdge - 0.08 + iceNoise, iceEdge + iceNoise, lat);
+    vec3 iceColor    = mix(vec3(0.88, 0.94, 1.0), vec3(0.55, 0.60, 0.50), uTemperature * 0.5);
+    base = mix(base, iceColor, iceFactor * dayFrac);
 
-    // === ICE CAPS ===
-    float iceLine = mix(0.82, 0.40, uIceMelt); // ice retreats toward poles
-    float iceBlend = fbm(uv * 9.0) * 0.12;
-    float hasIce = smoothstep(iceLine - 0.08 + iceBlend, iceLine + iceBlend, lat);
-    vec3 iceColour = mix(vec3(0.85, 0.92, 1.0), vec3(0.6, 0.65, 0.55), uTemperature * 0.6);
-    colour = mix(colour, iceColour, hasIce);
+    // ── Clouds ────────────────────────────────────────────────────────────────
+    float cloudAlpha = cloudLayer * 0.75;
+    vec3 cloudColor  = mix(vec3(0.95, 0.97, 1.0), vec3(0.8, 0.7, 0.5), uCO2 * 0.4);
+    base = mix(base, cloudColor, cloudAlpha * dayFrac);
 
-    // === CITY LIGHTS (night side) ===
-    vec3 lightDir = normalize(vec3(1.0, 0.3, 0.5));
-    float daylight = dot(vNormal, lightDir);
-    float nightSide = smoothstep(0.0, -0.3, daylight);
-    float cityDensity = fbm(uv * 25.0 + vec2(0.5)) * isLand;
-    vec3 cityGlow = vec3(1.0, 0.85, 0.5) * cityDensity * nightSide * 1.2;
-    colour += cityGlow;
-
-    // === SUNLIGHT ===
+    // ── Lighting ──────────────────────────────────────────────────────────────
     float diffuse = max(0.0, daylight);
-    float ambient = 0.12;
-    colour *= (ambient + diffuse * 0.88);
+    float ambient = 0.18;
+    base *= (ambient + diffuse * 0.82);
 
     // Specular on ocean
-    vec3 viewDir = normalize(-vPosition);
-    vec3 halfDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(vNormal, halfDir), 0.0), 120.0) * (1.0 - isLand) * 0.8;
-    colour += vec3(0.8, 0.9, 1.0) * spec;
+    vec3 halfDir = normalize(sunDir + viewDir);
+    float spec = pow(max(dot(vNormal, halfDir), 0.0), 80.0) * (1.0 - isLand) * (1.0 - cloudLayer) * 0.9;
+    base += vec3(0.85, 0.92, 1.0) * spec;
 
-    // === CO2 HAZE (brownish atmospheric tint at horizon) ===
-    float edgeFade = 1.0 - abs(dot(vNormal, viewDir));
-    edgeFade = pow(edgeFade, 2.5);
-    vec3 co2Haze = mix(vec3(0.2, 0.5, 0.9), vec3(0.6, 0.35, 0.05), uCO2);
-    colour = mix(colour, co2Haze, edgeFade * 0.25 * (0.3 + uCO2 * 0.7));
+    // ── CO₂ atmosphere edge tint ──────────────────────────────────────────────
+    float rim = pow(1.0 - abs(dot(vNormal, viewDir)), 3.5);
+    vec3 co2rim = mix(vec3(0.3, 0.6, 1.0), vec3(0.65, 0.35, 0.05), uCO2 * uCO2);
+    base = mix(base, co2rim, rim * 0.18 * (0.4 + uCO2 * 0.6));
 
-    gl_FragColor = vec4(colour, 1.0);
+    gl_FragColor = vec4(base, 1.0);
   }
 `;
 
-// Atmosphere glow shader
+// ── Atmosphere ────────────────────────────────────────────────────────────────
 export const atmosphereVertexShader = `
   varying vec3 vNormal;
   varying vec3 vPosition;
@@ -139,24 +122,22 @@ export const atmosphereVertexShader = `
 
 export const atmosphereFragmentShader = `
   uniform float uCO2;
+  uniform float uTemperature;
   varying vec3 vNormal;
   varying vec3 vPosition;
 
   void main() {
     vec3 viewDir = normalize(-vPosition);
     float rim = 1.0 - abs(dot(vNormal, viewDir));
-    rim = pow(rim, 3.0);
-
-    // Clean air = blue; polluted = murky orange
-    vec3 cleanAtmo  = vec3(0.3, 0.6, 1.0);
-    vec3 dirtyAtmo  = vec3(0.7, 0.4, 0.1);
-    vec3 atmoColour = mix(cleanAtmo, dirtyAtmo, uCO2 * uCO2);
-
-    gl_FragColor = vec4(atmoColour, rim * 0.7);
+    rim = pow(rim, 2.5);
+    vec3 clean = vec3(0.25, 0.55, 1.0);
+    vec3 dirty = vec3(0.65, 0.38, 0.08);
+    vec3 colour = mix(clean, dirty, uCO2 * uCO2 * 0.85);
+    gl_FragColor = vec4(colour, rim * 0.75);
   }
 `;
 
-// Stars vertex
+// ── Stars ─────────────────────────────────────────────────────────────────────
 export const starsVertexShader = `
   attribute float aSize;
   attribute float aBrightness;
@@ -165,7 +146,7 @@ export const starsVertexShader = `
     vBrightness = aBrightness;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
     gl_PointSize = aSize * (300.0 / -mvPos.z);
-    gl_Position = projectionMatrix * mvPos;
+    gl_Position  = projectionMatrix * mvPos;
   }
 `;
 
