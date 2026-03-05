@@ -134,7 +134,7 @@ export const atmosphereFragmentShader = `
     vec3 dirty = vec3(0.65, 0.38, 0.08);
     vec3 colour = mix(clean, dirty, uCO2 * uCO2 * 0.85);
     // Soft glow — never overwhelm the surface
-    gl_FragColor = vec4(colour, rim * 0.38);
+    gl_FragColor = vec4(colour, rim * 0.28);
   }
 `;
 

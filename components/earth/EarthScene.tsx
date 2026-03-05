@@ -36,7 +36,7 @@ export default function EarthScene({ climate }: Props) {
 
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, el.clientWidth / el.clientHeight, 0.1, 1000);
-    camera.position.set(0, -0.5, 5.8);
+    camera.position.set(0, -0.4, 4.8);
 
     // ── Stars ─────────────────────────────────────────────────────────────────
     const N = 10000;

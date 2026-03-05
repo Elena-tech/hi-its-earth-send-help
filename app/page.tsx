@@ -152,7 +152,7 @@ export default function Home() {
         {[
           { label: "TEMP",  value: `+${data.tempC.toFixed(2)}°C`,       colour: "#ff6644" },
           { label: "CO₂",   value: `${Math.round(data.co2Ppm)} ppm`,    colour: "#ff8c00" },
-          { label: "SEA +", value: `+${Math.round(data.seaLevelMm)}mm`, colour: "#4488ff" },
+          { label: "SEA",   value: `${data.seaLevelMm >= 0 ? "+" : ""}${Math.round(data.seaLevelMm)}mm`, colour: "#4488ff" },
           { label: "ICE",   value: `${data.iceExtent.toFixed(1)}M km²`, colour: "#00ccff" },
         ].map(({ label, value, colour }) => (
           <div key={label} style={{ textAlign: "center" }}>
