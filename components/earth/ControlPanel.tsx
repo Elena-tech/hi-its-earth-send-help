@@ -1,176 +1,114 @@
 "use client";
 
 import { ClimateState } from "./EarthScene";
+import { ClimateValues } from "@/lib/climateData";
 
 interface Props {
   climate: ClimateState;
-  onChange: (key: keyof ClimateState, value: number) => void;
+  data: ClimateValues;
 }
 
-const controls: {
-  key: keyof ClimateState;
-  label: string;
-  unit: string;
-  min: number;
-  max: number;
-  format: (v: number) => string;
-  colour: string;
-}[] = [
-  {
-    key: "temperature",
-    label: "Temperature Rise",
-    unit: "°C",
-    min: 0, max: 1,
-    format: v => `+${(v * 4).toFixed(1)}°C`,
-    colour: "#ff4444",
-  },
-  {
-    key: "co2",
-    label: "CO₂ Concentration",
-    unit: "ppm",
-    min: 0, max: 1,
-    format: v => `${Math.round(280 + v * 520)} ppm`,
-    colour: "#ff8c00",
-  },
-  {
-    key: "iceMelt",
-    label: "Ice Cap Melt",
-    unit: "%",
-    min: 0, max: 1,
-    format: v => `${Math.round(v * 100)}%`,
-    colour: "#00ccff",
-  },
-  {
-    key: "deforestation",
-    label: "Deforestation",
-    unit: "%",
-    min: 0, max: 1,
-    format: v => `${Math.round(v * 100)}%`,
-    colour: "#44ff88",
-  },
-  {
-    key: "seaLevel",
-    label: "Sea Level Rise",
-    unit: "m",
-    min: 0, max: 1,
-    format: v => `+${(v * 2).toFixed(1)}m`,
-    colour: "#4488ff",
-  },
-];
+export default function ControlPanel({ climate, data }: Props) {
+  const rows = [
+    {
+      label:  "Temperature",
+      raw:    `+${data.tempC.toFixed(2)}°C`,
+      sub:    "vs pre-industrial",
+      fill:   climate.temperature,
+      colour: "#ff4444",
+      source: "NASA GISS",
+    },
+    {
+      label:  "CO₂",
+      raw:    `${Math.round(data.co2Ppm)} ppm`,
+      sub:    "pre-ind: 280 ppm",
+      fill:   climate.co2,
+      colour: "#ff8c00",
+      source: "NOAA / Mauna Loa",
+    },
+    {
+      label:  "Arctic Ice",
+      raw:    `${data.iceExtent.toFixed(1)}M km²`,
+      sub:    "Sept minimum",
+      fill:   climate.iceMelt,
+      colour: "#00ccff",
+      source: "NSIDC",
+    },
+    {
+      label:  "Deforestation",
+      raw:    `${data.deforPct.toFixed(1)}% lost`,
+      sub:    "of 1850 cover",
+      fill:   climate.deforestation,
+      colour: "#44ff88",
+      source: "Global Forest Watch",
+    },
+    {
+      label:  "Sea Level",
+      raw:    `+${Math.round(data.seaLevelMm)} mm`,
+      sub:    "vs 1900",
+      fill:   climate.seaLevel,
+      colour: "#4488ff",
+      source: "CSIRO / NASA",
+    },
+  ];
 
-export default function ControlPanel({ climate, onChange }: Props) {
   return (
     <div style={{
-      position: "absolute",
-      right: "24px",
-      top: "50%",
+      position: "absolute", right: "24px", top: "50%",
       transform: "translateY(-50%)",
-      width: "280px",
-      background: "rgba(0,0,0,0.75)",
-      border: "1px solid rgba(255,255,255,0.1)",
+      width: "270px",
+      background: "rgba(0,0,0,0.78)",
+      border: "1px solid rgba(255,255,255,0.08)",
       borderRadius: "12px",
-      padding: "24px",
-      backdropFilter: "blur(12px)",
+      padding: "20px 22px",
+      backdropFilter: "blur(14px)",
       fontFamily: "'Space Mono', monospace",
+      zIndex: 10,
     }}>
       <p style={{
-        color: "rgba(255,255,255,0.4)",
-        fontSize: "9px",
-        letterSpacing: "0.2em",
-        textTransform: "uppercase",
-        marginBottom: "20px",
+        color: "rgba(255,255,255,0.35)",
+        fontSize: "8px", letterSpacing: "0.2em",
+        textTransform: "uppercase", marginBottom: "16px",
       }}>
-        Climate Parameters
+        Real-Time Indicators
       </p>
 
-      {controls.map(ctrl => (
-        <div key={ctrl.key} style={{ marginBottom: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-            <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "11px" }}>
-              {ctrl.label}
-            </span>
-            <span style={{ color: ctrl.colour, fontSize: "11px", fontWeight: "bold" }}>
-              {ctrl.format(climate[ctrl.key])}
-            </span>
+      {rows.map(r => (
+        <div key={r.label} style={{ marginBottom: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "5px" }}>
+            <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "10px" }}>{r.label}</span>
+            <span style={{ color: r.colour, fontSize: "12px", fontWeight: "bold" }}>{r.raw}</span>
           </div>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={climate[ctrl.key]}
-            onChange={e => onChange(ctrl.key, parseFloat(e.target.value))}
-            style={{
-              width: "100%",
-              appearance: "none",
-              height: "3px",
+          {/* Progress bar — read only, driven by real data */}
+          <div style={{
+            height: "3px", borderRadius: "2px",
+            background: "rgba(255,255,255,0.08)", overflow: "hidden",
+          }}>
+            <div style={{
+              height: "100%",
+              width: `${Math.round(r.fill * 100)}%`,
+              background: r.colour,
               borderRadius: "2px",
-              background: `linear-gradient(to right, ${ctrl.colour} 0%, ${ctrl.colour} ${climate[ctrl.key] * 100}%, rgba(255,255,255,0.15) ${climate[ctrl.key] * 100}%, rgba(255,255,255,0.15) 100%)`,
-              outline: "none",
-              cursor: "pointer",
-            }}
-          />
+              transition: "width 0.6s ease",
+            }} />
+          </div>
+          <div style={{
+            display: "flex", justifyContent: "space-between", marginTop: "3px",
+          }}>
+            <span style={{ fontSize: "8px", color: "rgba(255,255,255,0.2)" }}>{r.sub}</span>
+            <span style={{ fontSize: "8px", color: "rgba(255,255,255,0.18)" }}>{r.source}</span>
+          </div>
         </div>
       ))}
 
       <div style={{
-        marginTop: "24px",
-        paddingTop: "16px",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
+        marginTop: "8px", paddingTop: "12px",
+        borderTop: "1px solid rgba(255,255,255,0.07)",
+        fontSize: "8px", color: "rgba(255,255,255,0.2)",
+        lineHeight: 1.6,
       }}>
-        <button
-          onClick={() => controls.forEach(c => onChange(c.key, 0))}
-          style={{
-            width: "100%",
-            padding: "8px",
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "6px",
-            color: "rgba(255,255,255,0.5)",
-            fontSize: "10px",
-            letterSpacing: "0.15em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            marginBottom: "8px",
-          }}
-        >
-          Reset / Pre-Industrial
-        </button>
-        <button
-          onClick={() => controls.forEach(c => onChange(c.key, 0.28))}
-          style={{
-            width: "100%",
-            padding: "8px",
-            background: "rgba(255,100,0,0.1)",
-            border: "1px solid rgba(255,100,0,0.3)",
-            borderRadius: "6px",
-            color: "rgba(255,150,50,0.8)",
-            fontSize: "10px",
-            letterSpacing: "0.15em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-            marginBottom: "8px",
-          }}
-        >
-          Today (2024)
-        </button>
-        <button
-          onClick={() => controls.forEach(c => onChange(c.key, 1.0))}
-          style={{
-            width: "100%",
-            padding: "8px",
-            background: "rgba(255,0,0,0.1)",
-            border: "1px solid rgba(255,0,0,0.3)",
-            borderRadius: "6px",
-            color: "rgba(255,80,80,0.9)",
-            fontSize: "10px",
-            letterSpacing: "0.15em",
-            textTransform: "uppercase",
-            cursor: "pointer",
-          }}
-        >
-          Worst Case 2100
-        </button>
+        Drag the timeline to travel through time.<br/>
+        Past 2024: select an IPCC scenario.
       </div>
     </div>
   );

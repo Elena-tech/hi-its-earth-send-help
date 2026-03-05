@@ -1,45 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ClimateState } from "@/components/earth/EarthScene";
 import ControlPanel from "@/components/earth/ControlPanel";
+import Timeline from "@/components/earth/Timeline";
+import { getClimateForYear, Scenario, YEAR_MIN, YEAR_MAX } from "@/lib/climateData";
 
-// Load Three.js scene client-side only
 const EarthScene = dynamic(() => import("@/components/earth/EarthScene"), { ssr: false });
 
-const INITIAL_CLIMATE: ClimateState = {
-  temperature: 0.0,
-  co2: 0.0,
-  iceMelt: 0.0,
-  deforestation: 0.0,
-  seaLevel: 0.0,
-};
-
 export default function Home() {
-  const [climate, setClimate] = useState<ClimateState>(INITIAL_CLIMATE);
+  const [year, setYear]         = useState(2024);
+  const [scenario, setScenario] = useState<Scenario>("moderate");
 
-  const handleChange = (key: keyof ClimateState, value: number) => {
-    setClimate(prev => ({ ...prev, [key]: value }));
+  const data = getClimateForYear(year, scenario);
+
+  const climate: ClimateState = {
+    temperature:   data.temperature,
+    co2:           data.co2,
+    iceMelt:       data.iceMelt,
+    deforestation: data.deforestation,
+    seaLevel:      data.seaLevel,
   };
 
-  // Simple severity score for headline
-  const severity = (climate.temperature + climate.co2 + climate.iceMelt + climate.deforestation + climate.seaLevel) / 5;
+  // Dynamic headline
+  const t = data.tempC;
   const headline =
-    severity === 0     ? "hi, it's earth. i'm okay right now."   :
-    severity < 0.2     ? "hi, it's earth. things are changing."  :
-    severity < 0.5     ? "hi, it's earth. i need your attention.":
-    severity < 0.75    ? "hi, it's earth. please stop."           :
-                         "hi, it's earth. send help.";
+    year <= 1900 ? "hi, it's earth. i'm doing okay."                 :
+    year <= 1950 ? "hi, it's earth. things are starting to change."  :
+    year <= 1980 ? "hi, it's earth. i'm warming up. not in a good way." :
+    year <= 2000 ? "hi, it's earth. can someone turn down the heat?" :
+    year <= 2010 ? "hi, it's earth. i need your attention."          :
+    year <= 2024 ? "hi, it's earth. please stop."                    :
+    t < 2.0      ? "hi, it's earth. there's still hope."             :
+    t < 3.0      ? "hi, it's earth. we're running out of time."      :
+    t < 4.0      ? "hi, it's earth. i'm begging you."                :
+                   "hi, it's earth. send help.";
 
   return (
-    <main style={{
-      width: "100vw",
-      height: "100vh",
-      background: "#000",
-      position: "relative",
-      overflow: "hidden",
-    }}>
+    <main style={{ width: "100vw", height: "100vh", background: "#000", position: "relative", overflow: "hidden" }}>
       {/* Globe */}
       <div style={{ position: "absolute", inset: 0 }}>
         <EarthScene climate={climate} />
@@ -47,78 +46,63 @@ export default function Home() {
 
       {/* Top title */}
       <div style={{
-        position: "absolute",
-        top: "32px",
-        left: "40px",
-        zIndex: 10,
+        position: "absolute", top: "32px", left: "40px", zIndex: 10,
         fontFamily: "'Space Mono', monospace",
       }}>
         <h1 style={{
-          fontSize: "clamp(14px, 2.5vw, 22px)",
+          fontSize: "clamp(13px, 2vw, 20px)",
           color: "rgba(255,255,255,0.9)",
           fontWeight: 400,
-          letterSpacing: "0.05em",
-          lineHeight: 1.4,
-          maxWidth: "60vw",
-          transition: "all 0.6s ease",
+          letterSpacing: "0.04em",
+          lineHeight: 1.5,
+          maxWidth: "55vw",
+          transition: "all 0.8s ease",
         }}>
           {headline}
         </h1>
         <p style={{
-          marginTop: "6px",
-          fontSize: "10px",
-          color: "rgba(255,255,255,0.3)",
-          letterSpacing: "0.2em",
-          textTransform: "uppercase",
+          marginTop: "6px", fontSize: "9px",
+          color: "rgba(255,255,255,0.25)",
+          letterSpacing: "0.2em", textTransform: "uppercase",
         }}>
-          interactive climate simulation · drag to rotate
+          real data · nasa / noaa / nsidc / ipcc ar6 · drag to rotate
         </p>
       </div>
 
-      {/* Severity indicator */}
-      {severity > 0 && (
-        <div style={{
-          position: "absolute",
-          bottom: "32px",
-          left: "40px",
-          zIndex: 10,
-          fontFamily: "'Space Mono', monospace",
-        }}>
-          <p style={{
-            fontSize: "9px",
-            color: "rgba(255,255,255,0.3)",
-            letterSpacing: "0.2em",
-            textTransform: "uppercase",
-            marginBottom: "8px",
-          }}>Crisis Level</p>
-          <div style={{
-            width: "200px",
-            height: "3px",
-            background: "rgba(255,255,255,0.1)",
-            borderRadius: "2px",
-            overflow: "hidden",
-          }}>
-            <div style={{
-              height: "100%",
-              width: `${severity * 100}%`,
-              background: `hsl(${120 - severity * 120}, 100%, 50%)`,
-              borderRadius: "2px",
-              transition: "width 0.3s ease, background 0.3s ease",
-            }} />
+      {/* Stats strip */}
+      <div style={{
+        position: "absolute", top: "32px", right: "320px",
+        display: "flex", gap: "20px", zIndex: 10,
+        fontFamily: "'Space Mono', monospace",
+      }}>
+        {[
+          { label: "TEMP",     value: `+${data.tempC.toFixed(2)}°C`,         colour: "#ff6644" },
+          { label: "CO₂",      value: `${Math.round(data.co2Ppm)} ppm`,      colour: "#ff8c00" },
+          { label: "SEA +",    value: `${Math.round(data.seaLevelMm)} mm`,   colour: "#4488ff" },
+          { label: "ICE",      value: `${data.iceExtent.toFixed(1)}M km²`,   colour: "#00ccff" },
+          { label: "FOREST –", value: `${data.deforPct.toFixed(1)}%`,        colour: "#44ff88" },
+        ].map(({ label, value, colour }) => (
+          <div key={label} style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.15em", marginBottom: "3px" }}>
+              {label}
+            </div>
+            <div style={{ fontSize: "13px", color: colour, fontWeight: "bold" }}>
+              {value}
+            </div>
           </div>
-          <p style={{
-            marginTop: "6px",
-            fontSize: "10px",
-            color: `hsl(${120 - severity * 120}, 80%, 60%)`,
-            fontWeight: "bold",
-          }}>
-            {Math.round(severity * 100)}%
-          </p>
-        </div>
-      )}
+        ))}
+      </div>
+
+      {/* Timeline */}
+      <Timeline
+        year={year}
+        scenario={scenario}
+        onYearChange={setYear}
+        onScenarioChange={setScenario}
+      />
 
       {/* Control Panel */}
-      <ControlPanel climate={climate} onChange={handleChange} />
+      <ControlPanel climate={climate} data={data} />
     </main>
   );
 }
