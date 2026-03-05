@@ -3,9 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ClimateState } from "@/components/earth/EarthScene";
-import Timeline from "@/components/earth/Timeline";
+import BottomBar from "@/components/earth/BottomBar";
 import EventCard from "@/components/earth/EventCard";
-import PlayControls from "@/components/earth/PlayControls";
 import { getClimateForYear, Scenario, YEAR_MIN, YEAR_MAX } from "@/lib/climateData";
 import { getEventsForYear, ClimateEvent } from "@/lib/events";
 
@@ -105,7 +104,7 @@ export default function Home() {
                    "hi, it's earth. send help.";
 
   const stats = [
-    { label: "TEMP",  value: `${data.tempC >= 0 ? "+" : ""}${data.tempC.toFixed(2)}°C`,    colour: "#ff6644" },
+    { label: "TEMP",  value: `${data.tempC > 0 ? "+" : ""}${data.tempC.toFixed(2)}°C`,     colour: "#ff6644" },
     { label: "CO₂",   value: `${Math.round(data.co2Ppm)} ppm`,                            colour: "#ff8c00" },
     { label: "SEA",   value: `${data.seaLevelMm >= 0 ? "+" : ""}${Math.round(data.seaLevelMm)}mm`, colour: "#4488ff" },
     { label: "ICE",   value: `${data.iceExtent.toFixed(1)}M km²`,                         colour: "#00ccff" },
@@ -185,20 +184,16 @@ export default function Home() {
       {/* Event card */}
       <EventCard event={activeEvent} />
 
-      {/* Play controls */}
-      <PlayControls
-        playing={playing}
-        speed={speed}
-        onToggle={togglePlay}
-        onSpeedChange={setSpeed}
-      />
-
-      {/* Timeline */}
-      <Timeline
+      {/* Unified bottom bar */}
+      <BottomBar
         year={year}
         scenario={scenario}
+        playing={playing}
+        speed={speed}
         onYearChange={handleYearChange}
         onScenarioChange={setScenario}
+        onTogglePlay={togglePlay}
+        onSpeedChange={setSpeed}
       />
     </main>
   );
