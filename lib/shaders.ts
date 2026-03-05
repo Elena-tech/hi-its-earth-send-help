@@ -48,8 +48,8 @@ export const earthFragmentShader = `
     vec3 nightColor = texture2D(uNightTexture,  vUv).rgb;
     float clouds    = texture2D(uCloudsTexture, vUv).r;
 
-    // Bump cloud layer (slow drift)
-    vec2 cloudUv = vUv + vec2(uTime * 0.002, 0.0);
+    // Bump cloud layer (slow drift) — fract() ensures seamless wrap
+    vec2 cloudUv = fract(vUv + vec2(uTime * 0.002, 0.0));
     float cloudLayer = texture2D(uCloudsTexture, cloudUv).r;
 
     // ── Day/night blend ───────────────────────────────────────────────────────

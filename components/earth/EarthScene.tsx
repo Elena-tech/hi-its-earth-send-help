@@ -66,11 +66,16 @@ export default function EarthScene({ climate }: Props) {
 
     // ── Textures ──────────────────────────────────────────────────────────────
     const loader = new THREE.TextureLoader();
-    const dayTex    = loader.load("/textures/earth_day.jpg");
-    const nightTex  = loader.load("/textures/earth_night.jpg");
-    const cloudsTex = loader.load("/textures/earth_clouds.jpg");
-    dayTex.colorSpace   = THREE.SRGBColorSpace;
-    nightTex.colorSpace = THREE.SRGBColorSpace;
+    const setTex = (path: string, srgb = false) => {
+      const t = loader.load(path);
+      t.wrapS = THREE.RepeatWrapping;
+      t.wrapT = THREE.ClampToEdgeWrapping;
+      if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    };
+    const dayTex    = setTex("/textures/earth_day.jpg",    true);
+    const nightTex  = setTex("/textures/earth_night.jpg",  true);
+    const cloudsTex = setTex("/textures/earth_clouds.jpg", false);
 
     // ── Earth uniforms ────────────────────────────────────────────────────────
     const uniforms: Record<string, THREE.IUniform> = {
