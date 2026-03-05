@@ -36,9 +36,9 @@ export default function EventCard({ event }: Props) {
   return (
     <div style={{
       position: "absolute",
-      left: "40px",
+      left: "clamp(16px, 5vw, 40px)",
       bottom: "140px",
-      maxWidth: "360px",
+      maxWidth: "min(360px, 85vw)",
       background: `rgba(0,0,0,0.85)`,
       border: `1px solid ${colours.border}`,
       boxShadow: `0 0 40px ${colours.glow}, inset 0 0 20px ${colours.glow}`,

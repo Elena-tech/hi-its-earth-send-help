@@ -114,19 +114,33 @@ export default function EarthScene({ climate }: Props) {
       })
     ));
 
-    // ── Drag to rotate ────────────────────────────────────────────────────────
+    // ── Drag / touch to rotate ────────────────────────────────────────────────
     let drag = false;
     let prev = { x: 0, y: 0 };
     let vel  = { x: 0, y: 0 };
-    const onDown  = (e: MouseEvent) => { drag = true;  prev = { x: e.clientX, y: e.clientY }; };
-    const onUp    = ()               => { drag = false; };
-    const onMove  = (e: MouseEvent) => {
+
+    const onDown      = (e: MouseEvent)  => { drag = true; prev = { x: e.clientX, y: e.clientY }; };
+    const onUp        = ()               => { drag = false; };
+    const onMove      = (e: MouseEvent)  => {
       if (!drag) return;
       vel.y = (e.clientX - prev.x) * 0.005;
       vel.x = (e.clientY - prev.y) * 0.005;
       prev  = { x: e.clientX, y: e.clientY };
     };
-    renderer.domElement.addEventListener("mousedown", onDown);
+    const onTouchStart = (e: TouchEvent) => { drag = true; prev = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
+    const onTouchEnd   = ()              => { drag = false; };
+    const onTouchMove  = (e: TouchEvent) => {
+      if (!drag) return;
+      e.preventDefault();
+      vel.y = (e.touches[0].clientX - prev.x) * 0.005;
+      vel.x = (e.touches[0].clientY - prev.y) * 0.005;
+      prev  = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+
+    renderer.domElement.addEventListener("mousedown",  onDown);
+    renderer.domElement.addEventListener("touchstart", onTouchStart, { passive: false });
+    renderer.domElement.addEventListener("touchmove",  onTouchMove,  { passive: false });
+    renderer.domElement.addEventListener("touchend",   onTouchEnd);
     window.addEventListener("mouseup",   onUp);
     window.addEventListener("mousemove", onMove);
 
@@ -159,6 +173,9 @@ export default function EarthScene({ climate }: Props) {
       window.removeEventListener("mouseup",   onUp);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("resize",    onResize);
+      renderer.domElement.removeEventListener("touchstart", onTouchStart);
+      renderer.domElement.removeEventListener("touchmove",  onTouchMove);
+      renderer.domElement.removeEventListener("touchend",   onTouchEnd);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

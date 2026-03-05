@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ClimateState } from "@/components/earth/EarthScene";
-import ControlPanel from "@/components/earth/ControlPanel";
 import Timeline from "@/components/earth/Timeline";
 import EventCard from "@/components/earth/EventCard";
 import PlayControls from "@/components/earth/PlayControls";
@@ -13,18 +12,25 @@ import { getEventsForYear, ClimateEvent } from "@/lib/events";
 const EarthScene = dynamic(() => import("@/components/earth/EarthScene"), { ssr: false });
 
 export default function Home() {
-  const [year, setYear]             = useState(1850);
-  const [scenario, setScenario]     = useState<Scenario>("moderate");
-  const [playing, setPlaying]       = useState(false);
-  const [speed, setSpeed]           = useState(5);
+  const [year, setYear]               = useState(1850);
+  const [scenario, setScenario]       = useState<Scenario>("moderate");
+  const [playing, setPlaying]         = useState(false);
+  const [speed, setSpeed]             = useState(5);
   const [activeEvent, setActiveEvent] = useState<ClimateEvent | null>(null);
+  const [isMobile, setIsMobile]       = useState(false);
 
-  // Fractional year ref for smooth animation
-  const fracYear    = useRef(1850);
-  const lastTime    = useRef<number | null>(null);
-  const pauseUntil  = useRef(0);
-  const animFrame   = useRef<number>(0);
-  const pendingEvents = useRef<ClimateEvent[]>([]);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const fracYear       = useRef(1850);
+  const lastTime       = useRef<number | null>(null);
+  const pauseUntil     = useRef(0);
+  const animFrame      = useRef<number>(0);
+  const pendingEvents  = useRef<ClimateEvent[]>([]);
 
   const data    = getClimateForYear(year, scenario);
   const climate: ClimateState = {
@@ -35,19 +41,16 @@ export default function Home() {
     seaLevel:      data.seaLevel,
   };
 
-  // ── Animation loop ────────────────────────────────────────────────────────
   const tick = useCallback((now: number) => {
     if (!lastTime.current) lastTime.current = now;
     const dt = (now - lastTime.current) / 1000;
     lastTime.current = now;
 
     if (now >= pauseUntil.current) {
-      // Advance year
       fracYear.current = Math.min(fracYear.current + dt * speed, YEAR_MAX);
       const rounded = Math.round(fracYear.current);
       setYear(rounded);
 
-      // Check for events at new year
       const evts = getEventsForYear(fracYear.current);
       if (evts.length > 0 && !pendingEvents.current.some(e => e.year === evts[0].year)) {
         pendingEvents.current = evts;
@@ -57,11 +60,7 @@ export default function Home() {
         setTimeout(() => setActiveEvent(null), evt.pauseMs - 400);
       }
 
-      // Reached end
-      if (fracYear.current >= YEAR_MAX) {
-        setPlaying(false);
-        return;
-      }
+      if (fracYear.current >= YEAR_MAX) { setPlaying(false); return; }
     }
 
     animFrame.current = requestAnimationFrame(tick);
@@ -92,7 +91,6 @@ export default function Home() {
     setActiveEvent(null);
   };
 
-  // ── Headline ──────────────────────────────────────────────────────────────
   const t = data.tempC;
   const headline =
     year <= 1900 ? "hi, it's earth. i'm doing okay."                    :
@@ -106,58 +104,62 @@ export default function Home() {
     t < 4.0      ? "hi, it's earth. i'm begging you."                   :
                    "hi, it's earth. send help.";
 
+  const stats = [
+    { label: "TEMP",  value: `+${data.tempC.toFixed(2)}°C`,                                colour: "#ff6644" },
+    { label: "CO₂",   value: `${Math.round(data.co2Ppm)} ppm`,                            colour: "#ff8c00" },
+    { label: "SEA",   value: `${data.seaLevelMm >= 0 ? "+" : ""}${Math.round(data.seaLevelMm)}mm`, colour: "#4488ff" },
+    { label: "ICE",   value: `${data.iceExtent.toFixed(1)}M km²`,                         colour: "#00ccff" },
+  ];
+
   return (
     <main style={{ width: "100vw", height: "100vh", background: "#000", position: "relative", overflow: "hidden" }}>
-      {/* Globe */}
       <div style={{ position: "absolute", inset: 0 }}>
         <EarthScene climate={climate} />
       </div>
 
-      {/* Top title */}
+      {/* Top-left headline */}
       <div style={{
-        position: "absolute", top: "32px", left: "40px", zIndex: 10,
-        fontFamily: "'Space Mono', monospace",
+        position: "absolute", top: isMobile ? "16px" : "28px",
+        left: isMobile ? "16px" : "32px",
+        zIndex: 10, fontFamily: "'Space Mono', monospace",
+        maxWidth: isMobile ? "60vw" : "50vw",
       }}>
-        <h1 style={{
-          fontSize: "clamp(13px, 2vw, 20px)",
-          color: "rgba(255,255,255,0.9)",
-          fontWeight: 400,
-          letterSpacing: "0.04em",
-          lineHeight: 1.5,
-          maxWidth: "55vw",
+        <h1 className="headline" style={{
+          fontSize: isMobile ? "11px" : "clamp(13px, 1.8vw, 19px)",
+          color: "rgba(255,255,255,0.88)",
+          fontWeight: 400, letterSpacing: "0.03em", lineHeight: 1.5,
           transition: "all 0.8s ease",
         }}>
           {headline}
         </h1>
-        <p style={{
-          marginTop: "6px", fontSize: "9px",
-          color: "rgba(255,255,255,0.25)",
-          letterSpacing: "0.2em", textTransform: "uppercase",
+        <p className="subtitle" style={{
+          marginTop: "5px", fontSize: "8px",
+          color: "rgba(255,255,255,0.22)",
+          letterSpacing: "0.18em", textTransform: "uppercase",
         }}>
-          real data · nasa / noaa / nsidc / ipcc ar6 · drag to rotate
+          nasa · noaa · nsidc · ipcc ar6
         </p>
       </div>
 
-      {/* Live stats strip — top right */}
-      <div style={{
-        position: "absolute", top: "32px", right: "24px",
-        display: "flex", gap: "20px", zIndex: 10,
-        fontFamily: "'Space Mono', monospace",
-        background: "rgba(0,0,0,0.5)",
-        backdropFilter: "blur(8px)",
-        padding: "10px 16px",
+      {/* Top-right stats */}
+      <div className="stats-strip" style={{
+        position: "absolute",
+        top: isMobile ? "16px" : "28px",
+        right: isMobile ? "16px" : "24px",
+        display: "flex",
+        gap: isMobile ? "10px" : "18px",
+        zIndex: 10,
+        background: "rgba(0,0,0,0.55)",
+        backdropFilter: "blur(10px)",
+        padding: isMobile ? "8px 12px" : "10px 16px",
         borderRadius: "8px",
         border: "1px solid rgba(255,255,255,0.07)",
+        fontFamily: "'Space Mono', monospace",
       }}>
-        {[
-          { label: "TEMP",  value: `+${data.tempC.toFixed(2)}°C`,       colour: "#ff6644" },
-          { label: "CO₂",   value: `${Math.round(data.co2Ppm)} ppm`,    colour: "#ff8c00" },
-          { label: "SEA",   value: `${data.seaLevelMm >= 0 ? "+" : ""}${Math.round(data.seaLevelMm)}mm`, colour: "#4488ff" },
-          { label: "ICE",   value: `${data.iceExtent.toFixed(1)}M km²`, colour: "#00ccff" },
-        ].map(({ label, value, colour }) => (
-          <div key={label} style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.15em", marginBottom: "3px" }}>{label}</div>
-            <div style={{ fontSize: "13px", color: colour, fontWeight: "bold", transition: "color 0.5s" }}>{value}</div>
+        {stats.map(({ label, value, colour }) => (
+          <div key={label} className="stats-item" style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "7px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.12em", marginBottom: "3px" }}>{label}</div>
+            <div style={{ fontSize: isMobile ? "11px" : "13px", color: colour, fontWeight: "bold", transition: "color 0.5s" }}>{value}</div>
           </div>
         ))}
       </div>
@@ -170,7 +172,7 @@ export default function Home() {
         playing={playing}
         speed={speed}
         onToggle={togglePlay}
-        onSpeedChange={s => { setSpeed(s); }}
+        onSpeedChange={setSpeed}
       />
 
       {/* Timeline */}
@@ -180,9 +182,6 @@ export default function Home() {
         onYearChange={handleYearChange}
         onScenarioChange={setScenario}
       />
-
-      {/* Control panel — hidden for now, stats strip covers it */}
-      {/* <ControlPanel climate={climate} data={data} /> */}
     </main>
   );
 }

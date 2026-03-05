@@ -26,8 +26,8 @@ export default function PlayControls({ playing, speed, onToggle, onSpeedChange }
       <button
         onClick={onToggle}
         style={{
-          width: "38px",
-          height: "38px",
+          width: "44px",
+          height: "44px",
           borderRadius: "50%",
           border: "1px solid rgba(255,255,255,0.3)",
           background: playing ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.08)",
