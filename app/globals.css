@@ -12,6 +12,11 @@ html, body {
 
 canvas { display: block; touch-action: none; }
 
+/* iOS safe area — keeps controls above home bar */
+main {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Range slider cross-browser */
 input[type=range] { -webkit-appearance: none; appearance: none; }
 input[type=range]::-webkit-slider-thumb {

@@ -23,7 +23,7 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
   return (
     <div style={{
       position: "absolute",
-      bottom: "32px",
+      bottom: "max(32px, env(safe-area-inset-bottom, 32px))",
       left: "50%",
       transform: "translateX(-50%)",
       width: "min(680px, 90vw)",

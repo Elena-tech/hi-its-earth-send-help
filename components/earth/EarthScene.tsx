@@ -16,9 +16,9 @@ export interface ClimateState {
   seaLevel: number;
 }
 
-interface Props { climate: ClimateState }
+interface Props { climate: ClimateState; isMobile?: boolean }
 
-export default function EarthScene({ climate }: Props) {
+export default function EarthScene({ climate, isMobile }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{ uniforms: Record<string, THREE.IUniform>; animId: number; renderer: THREE.WebGLRenderer } | null>(null);
 
@@ -36,7 +36,7 @@ export default function EarthScene({ climate }: Props) {
 
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, el.clientWidth / el.clientHeight, 0.1, 1000);
-    camera.position.set(0, -0.4, 4.8);
+    camera.position.set(0, isMobile ? -0.3 : -0.4, isMobile ? 9.0 : 4.8);
 
     // ── Stars ─────────────────────────────────────────────────────────────────
     const N = 10000;

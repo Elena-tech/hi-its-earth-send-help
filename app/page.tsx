@@ -105,7 +105,7 @@ export default function Home() {
                    "hi, it's earth. send help.";
 
   const stats = [
-    { label: "TEMP",  value: `+${data.tempC.toFixed(2)}°C`,                                colour: "#ff6644" },
+    { label: "TEMP",  value: `${data.tempC >= 0 ? "+" : ""}${data.tempC.toFixed(2)}°C`,    colour: "#ff6644" },
     { label: "CO₂",   value: `${Math.round(data.co2Ppm)} ppm`,                            colour: "#ff8c00" },
     { label: "SEA",   value: `${data.seaLevelMm >= 0 ? "+" : ""}${Math.round(data.seaLevelMm)}mm`, colour: "#4488ff" },
     { label: "ICE",   value: `${data.iceExtent.toFixed(1)}M km²`,                         colour: "#00ccff" },
@@ -114,7 +114,7 @@ export default function Home() {
   return (
     <main style={{ width: "100vw", height: "100vh", background: "#000", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0 }}>
-        <EarthScene climate={climate} />
+        <EarthScene climate={climate} isMobile={isMobile} />
       </div>
 
       {/* Mobile: stacked header — stats then headline */}
