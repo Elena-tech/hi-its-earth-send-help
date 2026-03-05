@@ -1,65 +1,124 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import dynamic from "next/dynamic";
+import { ClimateState } from "@/components/earth/EarthScene";
+import ControlPanel from "@/components/earth/ControlPanel";
+
+// Load Three.js scene client-side only
+const EarthScene = dynamic(() => import("@/components/earth/EarthScene"), { ssr: false });
+
+const INITIAL_CLIMATE: ClimateState = {
+  temperature: 0.0,
+  co2: 0.0,
+  iceMelt: 0.0,
+  deforestation: 0.0,
+  seaLevel: 0.0,
+};
 
 export default function Home() {
+  const [climate, setClimate] = useState<ClimateState>(INITIAL_CLIMATE);
+
+  const handleChange = (key: keyof ClimateState, value: number) => {
+    setClimate(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Simple severity score for headline
+  const severity = (climate.temperature + climate.co2 + climate.iceMelt + climate.deforestation + climate.seaLevel) / 5;
+  const headline =
+    severity === 0     ? "hi, it's earth. i'm okay right now."   :
+    severity < 0.2     ? "hi, it's earth. things are changing."  :
+    severity < 0.5     ? "hi, it's earth. i need your attention.":
+    severity < 0.75    ? "hi, it's earth. please stop."           :
+                         "hi, it's earth. send help.";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main style={{
+      width: "100vw",
+      height: "100vh",
+      background: "#000",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* Globe */}
+      <div style={{ position: "absolute", inset: 0 }}>
+        <EarthScene climate={climate} />
+      </div>
+
+      {/* Top title */}
+      <div style={{
+        position: "absolute",
+        top: "32px",
+        left: "40px",
+        zIndex: 10,
+        fontFamily: "'Space Mono', monospace",
+      }}>
+        <h1 style={{
+          fontSize: "clamp(14px, 2.5vw, 22px)",
+          color: "rgba(255,255,255,0.9)",
+          fontWeight: 400,
+          letterSpacing: "0.05em",
+          lineHeight: 1.4,
+          maxWidth: "60vw",
+          transition: "all 0.6s ease",
+        }}>
+          {headline}
+        </h1>
+        <p style={{
+          marginTop: "6px",
+          fontSize: "10px",
+          color: "rgba(255,255,255,0.3)",
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+        }}>
+          interactive climate simulation · drag to rotate
+        </p>
+      </div>
+
+      {/* Severity indicator */}
+      {severity > 0 && (
+        <div style={{
+          position: "absolute",
+          bottom: "32px",
+          left: "40px",
+          zIndex: 10,
+          fontFamily: "'Space Mono', monospace",
+        }}>
+          <p style={{
+            fontSize: "9px",
+            color: "rgba(255,255,255,0.3)",
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            marginBottom: "8px",
+          }}>Crisis Level</p>
+          <div style={{
+            width: "200px",
+            height: "3px",
+            background: "rgba(255,255,255,0.1)",
+            borderRadius: "2px",
+            overflow: "hidden",
+          }}>
+            <div style={{
+              height: "100%",
+              width: `${severity * 100}%`,
+              background: `hsl(${120 - severity * 120}, 100%, 50%)`,
+              borderRadius: "2px",
+              transition: "width 0.3s ease, background 0.3s ease",
+            }} />
+          </div>
+          <p style={{
+            marginTop: "6px",
+            fontSize: "10px",
+            color: `hsl(${120 - severity * 120}, 80%, 60%)`,
+            fontWeight: "bold",
+          }}>
+            {Math.round(severity * 100)}%
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+
+      {/* Control Panel */}
+      <ControlPanel climate={climate} onChange={handleChange} />
+    </main>
   );
 }
