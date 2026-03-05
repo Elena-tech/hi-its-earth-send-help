@@ -54,11 +54,11 @@ export const earthFragmentShader = `
 
     // ── Day/night blend ───────────────────────────────────────────────────────
     float daylight = dot(vNormal, sunDir);
-    float dayFrac  = smoothstep(-0.25, 0.25, daylight);
+    float dayFrac  = smoothstep(-0.15, 0.35, daylight);
 
-    // Night: show city lights
-    vec3 nightGlow = nightColor * 1.8;
-    vec3 base = mix(nightGlow, dayColor, dayFrac);
+    // Night: city lights — scale brightness, no banding
+    vec3 nightGlow = nightColor * nightColor * 2.5; // gamma lift
+    vec3 base = mix(nightGlow * 0.6, dayColor, dayFrac);
 
     // ── Climate effects on land colour ────────────────────────────────────────
     // Detect greenery (high green, low red/blue) — forests
@@ -133,7 +133,8 @@ export const atmosphereFragmentShader = `
     vec3 clean = vec3(0.25, 0.55, 1.0);
     vec3 dirty = vec3(0.65, 0.38, 0.08);
     vec3 colour = mix(clean, dirty, uCO2 * uCO2 * 0.85);
-    gl_FragColor = vec4(colour, rim * 0.75);
+    // Cap opacity so planet always shows through
+    gl_FragColor = vec4(colour, rim * 0.55);
   }
 `;
 
