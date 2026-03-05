@@ -138,11 +138,16 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Live stats strip */}
+      {/* Live stats strip — top right */}
       <div style={{
-        position: "absolute", top: "32px", right: "310px",
-        display: "flex", gap: "18px", zIndex: 10,
+        position: "absolute", top: "32px", right: "24px",
+        display: "flex", gap: "20px", zIndex: 10,
         fontFamily: "'Space Mono', monospace",
+        background: "rgba(0,0,0,0.5)",
+        backdropFilter: "blur(8px)",
+        padding: "10px 16px",
+        borderRadius: "8px",
+        border: "1px solid rgba(255,255,255,0.07)",
       }}>
         {[
           { label: "TEMP",  value: `+${data.tempC.toFixed(2)}°C`,       colour: "#ff6644" },
@@ -176,8 +181,8 @@ export default function Home() {
         onScenarioChange={setScenario}
       />
 
-      {/* Control panel */}
-      <ControlPanel climate={climate} data={data} />
+      {/* Control panel — hidden for now, stats strip covers it */}
+      {/* <ControlPanel climate={climate} data={data} /> */}
     </main>
   );
 }
