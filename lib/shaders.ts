@@ -16,7 +16,7 @@ export const earthFragmentShader = `
   precision highp float;
 
   uniform sampler2D uDayTexture;
-  uniform sampler2D uNightTexture;
+
   uniform sampler2D uCloudsTexture;
 
   uniform float uTime;
@@ -45,7 +45,6 @@ export const earthFragmentShader = `
 
     // ── Base textures ─────────────────────────────────────────────────────────
     vec3 dayColor   = texture2D(uDayTexture,    vUv).rgb;
-    vec3 nightColor = texture2D(uNightTexture,  vUv).rgb;
     float clouds    = texture2D(uCloudsTexture, vUv).r;
 
     // Bump cloud layer (slow drift) — fract() ensures seamless wrap
@@ -56,8 +55,9 @@ export const earthFragmentShader = `
     float daylight = dot(vNormal, sunDir);
     float dayFrac  = smoothstep(-0.15, 0.35, daylight);
 
-    // Night: city lights — scale brightness, no banding
-    vec3 nightGlow = nightColor * nightColor * 2.5; // gamma lift
+    // Procedural city lights (night side)
+    float cityDensity = fbm(vUv * 35.0 + vec2(0.5)) * smoothstep(0.48, 0.52, dayColor.g);
+    vec3 nightGlow = vec3(1.0, 0.85, 0.5) * cityDensity * 1.8; // Warm city glow
     vec3 base = mix(nightGlow * 0.6, dayColor, dayFrac);
 
     // ── Climate effects on land colour ────────────────────────────────────────

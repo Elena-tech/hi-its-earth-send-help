@@ -68,8 +68,12 @@ export default function EarthScene({ climate }: Props) {
     const loader = new THREE.TextureLoader();
     const setTex = (path: string, srgb = false) => {
       const t = loader.load(path);
-      t.wrapS = THREE.RepeatWrapping;
-      t.wrapT = THREE.ClampToEdgeWrapping;
+      t.wrapS          = THREE.RepeatWrapping;
+      t.wrapT          = THREE.ClampToEdgeWrapping;
+      // NASA textures are non-power-of-2 — disable mipmaps to prevent banding
+      t.minFilter      = THREE.LinearFilter;
+      t.magFilter      = THREE.LinearFilter;
+      t.generateMipmaps = false;
       if (srgb) t.colorSpace = THREE.SRGBColorSpace;
       return t;
     };
@@ -80,7 +84,6 @@ export default function EarthScene({ climate }: Props) {
     // ── Earth uniforms ────────────────────────────────────────────────────────
     const uniforms: Record<string, THREE.IUniform> = {
       uDayTexture:    { value: dayTex },
-      uNightTexture:  { value: nightTex },
       uCloudsTexture: { value: cloudsTex },
       uTime:          { value: 0 },
       uTemperature:   { value: climate.temperature },
