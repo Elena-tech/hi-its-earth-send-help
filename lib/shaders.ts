@@ -62,15 +62,20 @@ export const earthFragmentShader = `
     vec3 base = mix(nightGlow * 0.6, dayColor, dayFrac);
 
     // ── Climate effects on land colour ────────────────────────────────────────
-    // Detect greenery (high green, low red/blue) — forests
-    float greenness = smoothstep(0.0, 0.3, dayColor.g - max(dayColor.r, dayColor.b));
-    // Heat tint — shift green land toward brown/orange
-    vec3 heatTint = vec3(0.55, 0.25, 0.05);
-    base = mix(base, mix(base, heatTint, 0.6), greenness * uDeforestation);
-    // Additional warming redness on all land
     float isLand = 1.0 - smoothstep(0.05, 0.2, dayColor.b - dayColor.r);
+
+    // Deforestation — only visibly browns forests above ~60% loss
+    // Below that, it's happening but not yet globally obvious on the texture
+    float greenness = smoothstep(0.0, 0.3, dayColor.g - max(dayColor.r, dayColor.b));
+    vec3 heatTint = vec3(0.55, 0.25, 0.05);
+    float deforStrength = pow(max(0.0, uDeforestation - 0.5) / 0.5, 2.0); // only kicks in above 50%
+    base = mix(base, mix(base, heatTint, 0.5), greenness * deforStrength);
+
+    // Warm tint — only start browning land above ~+2°C (uTemperature ~0.49)
+    // Below that the planet looks warm but not scorched
     vec3 warmTint = vec3(0.7, 0.3, 0.1);
-    base = mix(base, mix(base, warmTint, 0.4 * isLand), uTemperature * 0.5);
+    float warmStrength = max(0.0, uTemperature - 0.45) / 0.55; // 0 below +2°C, ramps to 1 at +4°C
+    base = mix(base, mix(base, warmTint, 0.45 * isLand), warmStrength * warmStrength);
 
     // ── Sea level rise — darken/blue coastal areas ────────────────────────────
     float shallowOcean = smoothstep(0.1, 0.25, dayColor.b) * (1.0 - isLand);
