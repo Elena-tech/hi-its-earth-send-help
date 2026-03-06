@@ -107,6 +107,13 @@ export default function BottomBar({
       </div>
 
       {/* Row 2: slider */}
+      <style>{`
+        .bb-slider { -webkit-appearance: none; appearance: none; height: 20px; background: transparent; cursor: pointer; outline: none; width: 100%; }
+        .bb-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: transparent; }
+        .bb-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid rgba(255,255,255,0.6); margin-top: -5px; box-shadow: 0 0 6px rgba(255,255,255,0.4); cursor: pointer; }
+        .bb-slider::-moz-range-track { height: 4px; border-radius: 2px; background: transparent; }
+        .bb-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid rgba(255,255,255,0.6); box-shadow: 0 0 6px rgba(255,255,255,0.4); cursor: pointer; }
+      `}</style>
       <div style={{ position: "relative", marginBottom: "6px" }}>
         {/* TODAY marker */}
         <div style={{
@@ -115,24 +122,32 @@ export default function BottomBar({
           fontSize: "7px", color: "rgba(255,255,255,0.4)",
           letterSpacing: "0.12em", pointerEvents: "none",
         }}>TODAY</div>
+
+        {/* Visual track — centred in hit zone */}
+        <div style={{
+          position: "absolute", top: "50%", transform: "translateY(-50%)",
+          left: 0, right: 0, height: "4px", borderRadius: "2px",
+          background: `linear-gradient(to right,
+            rgba(255,255,255,0.6) 0%,
+            rgba(255,255,255,0.6) ${todayPct}%,
+            rgba(200,80,40,0.5) ${todayPct}%,
+            rgba(200,80,40,0.5) ${pct}%,
+            rgba(255,255,255,0.1) ${pct}%,
+            rgba(255,255,255,0.1) 100%)`,
+          pointerEvents: "none", zIndex: 1,
+        }} />
         <div style={{
           position: "absolute", left: `${todayPct}%`,
-          top: 0, bottom: 0, width: "1px",
+          top: "50%", transform: "translate(-50%, -50%)",
+          width: "1px", height: "12px",
           background: "rgba(255,255,255,0.2)", pointerEvents: "none", zIndex: 1,
         }} />
+
+        {/* Input — transparent, thumb centred on track */}
         <input type="range" min={YEAR_MIN} max={YEAR_MAX} step={1} value={year}
           onChange={e => onYearChange(Number(e.target.value))}
-          style={{
-            width: "100%", appearance: "none", height: "4px", borderRadius: "2px",
-            background: `linear-gradient(to right,
-              rgba(255,255,255,0.6) 0%,
-              rgba(255,255,255,0.6) ${todayPct}%,
-              rgba(200,80,40,0.5) ${todayPct}%,
-              rgba(200,80,40,0.5) ${pct}%,
-              rgba(255,255,255,0.1) ${pct}%,
-              rgba(255,255,255,0.1) 100%)`,
-            outline: "none", cursor: "pointer", position: "relative", zIndex: 2,
-          }}
+          className="bb-slider"
+          style={{ position: "relative", zIndex: 2 }}
         />
       </div>
 
