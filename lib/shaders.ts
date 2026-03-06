@@ -62,15 +62,20 @@ export const earthFragmentShader = `
     vec3 base = mix(nightGlow * 0.6, dayColor, dayFrac);
 
     // ── Climate effects on land colour ────────────────────────────────────────
-    // Detect greenery (high green, low red/blue) — forests
-    float greenness = smoothstep(0.0, 0.3, dayColor.g - max(dayColor.r, dayColor.b));
-    // Heat tint — shift green land toward brown/orange
-    vec3 heatTint = vec3(0.55, 0.25, 0.05);
-    base = mix(base, mix(base, heatTint, 0.6), greenness * uDeforestation);
-    // Additional warming redness on all land
     float isLand = 1.0 - smoothstep(0.05, 0.2, dayColor.b - dayColor.r);
+
+    // Deforestation — only visibly browns forests above ~60% loss
+    // Below that, it's happening but not yet globally obvious on the texture
+    float greenness = smoothstep(0.0, 0.3, dayColor.g - max(dayColor.r, dayColor.b));
+    vec3 heatTint = vec3(0.55, 0.25, 0.05);
+    float deforStrength = pow(max(0.0, uDeforestation - 0.5) / 0.5, 2.0); // only kicks in above 50%
+    base = mix(base, mix(base, heatTint, 0.5), greenness * deforStrength);
+
+    // Warm tint — only start browning land above ~+2°C (uTemperature ~0.49)
+    // Below that the planet looks warm but not scorched
     vec3 warmTint = vec3(0.7, 0.3, 0.1);
-    base = mix(base, mix(base, warmTint, 0.4 * isLand), uTemperature * 0.5);
+    float warmStrength = max(0.0, uTemperature - 0.45) / 0.55; // 0 below +2°C, ramps to 1 at +4°C
+    base = mix(base, mix(base, warmTint, 0.45 * isLand), warmStrength * warmStrength);
 
     // ── Sea level rise — darken/blue coastal areas ────────────────────────────
     float shallowOcean = smoothstep(0.1, 0.25, dayColor.b) * (1.0 - isLand);
@@ -110,27 +115,25 @@ export const earthFragmentShader = `
     // Regional anomaly: Arctic amplification + land/ocean differential
     float latDeg  = (vUv.y - 0.5) * 180.0;               // –90 (S) to +90 (N)
     float absLat  = abs(latDeg) / 90.0;                   // 0=equator, 1=pole
-    // Arctic warms 3x faster, Antarctic 2x
-    float polarFactor = 1.0 + absLat * absLat * 2.5;
-    // Land warms 1.5x faster than ocean
-    float landFactor  = mix(1.0, 1.5, isLand);
     // Small regional noise so it doesn't look uniform
     float regionNoise = fbm(vUv * 4.0 + vec2(0.7, 0.3)) * 0.4 - 0.2;
-
-    // Local anomaly in °C
-    float localAnomaly = uTempAnomaly * polarFactor * landFactor + regionNoise * abs(uTempAnomaly);
+    // poles warm ~2x faster, land ~1.2x faster than ocean
+    float scaledPolar = 1.0 + absLat * absLat * 1.0;
+    float scaledLand  = mix(1.0, 1.2, isLand);
+    float localAnomaly = uTempAnomaly * scaledPolar * scaledLand + regionNoise * abs(uTempAnomaly) * 0.3;
 
     // Map anomaly to heatmap colour
-    // -1°C → blue, 0 → transparent, +1 → yellow, +2 → orange, +3+ → red
+    // colour scale: denominator raised so red only appears at genuinely high anomalies
+    // 0→1.5°C = yellow, 1.5→3°C = orange, 3°C+ = red
     vec3 heatColour;
     float heatAlpha;
     if (localAnomaly < 0.0) {
       // Cool anomaly — blue tint
       heatColour = vec3(0.1, 0.3, 1.0);
-      heatAlpha  = clamp(-localAnomaly * 0.3, 0.0, 0.25);
+      heatAlpha  = clamp(-localAnomaly * 0.2, 0.0, 0.20);
     } else {
       // Warm anomaly — yellow → orange → red
-      float t = clamp(localAnomaly / 4.0, 0.0, 1.0);
+      float t = clamp(localAnomaly / 7.0, 0.0, 1.0);  // red only at ~7°C equiv
       vec3 yellow = vec3(1.0, 0.95, 0.0);
       vec3 orange = vec3(1.0, 0.40, 0.0);
       vec3 red    = vec3(0.85, 0.0, 0.0);
@@ -138,7 +141,7 @@ export const earthFragmentShader = `
       if (t < 0.33)      heatColour = mix(yellow, orange, t / 0.33);
       else if (t < 0.66) heatColour = mix(orange, red,   (t - 0.33) / 0.33);
       else               heatColour = mix(red,    dark,  (t - 0.66) / 0.34);
-      heatAlpha = clamp(localAnomaly * 0.18, 0.0, 0.55);
+      heatAlpha = clamp(localAnomaly * 0.09, 0.0, 0.45);  // less saturated overall
     }
 
     // Only show on day side
