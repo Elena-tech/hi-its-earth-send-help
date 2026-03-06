@@ -9,6 +9,8 @@ import {
 } from "@/lib/shaders";
 import { spherePointToLatLon } from "@/lib/geo/raycaster";
 import { findCountryAt, preloadCountries } from "@/lib/geo/countries";
+import { onHeatmapUpdate, loadGlobalHeatmap, type AnomalyMap } from "@/lib/api/globalHeatmap";
+import { renderHeatmapToCanvas } from "@/lib/geo/countryCanvas";
 
 export interface ClimateState {
   temperature: number;
@@ -27,11 +29,12 @@ export interface CountryHit {
 
 interface Props {
   climate: ClimateState;
+  year: number;
   isMobile?: boolean;
   onCountryClick?: (country: CountryHit) => void;
 }
 
-export default function EarthScene({ climate, isMobile, onCountryClick }: Props) {
+export default function EarthScene({ climate, year, isMobile, onCountryClick }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{ uniforms: Record<string, THREE.IUniform>; animId: number; renderer: THREE.WebGLRenderer } | null>(null);
@@ -41,6 +44,30 @@ export default function EarthScene({ climate, isMobile, onCountryClick }: Props)
 
   // Preload country geometry
   useEffect(() => { preloadCountries(); }, []);
+
+  // Global heatmap — load for current year, update canvas texture reactively
+  const currentYearRef = useRef(climate.tempAnomaly); // reuse as year proxy via prop
+  useEffect(() => {
+    const yearToLoad = year;
+
+    // Subscribe to progressive updates
+    const unsub = onHeatmapUpdate(async (anomalies: AnomalyMap) => {
+      const s = sceneRef.current;
+      if (!s) return;
+      const canvas = await renderHeatmapToCanvas(anomalies);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.needsUpdate = true;
+      s.uniforms.uHeatmapTexture.value = tex;
+      // Fade in as data arrives: opacity = fraction of countries with data
+      const coverage = Math.min(1, anomalies.size / 150);
+      s.uniforms.uHeatmapOpacity.value = coverage * 0.85;
+    });
+
+    loadGlobalHeatmap(yearToLoad);
+
+    return unsub;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Math.round(year)]);
 
   useEffect(() => {
     const el = mountRef.current;
@@ -103,8 +130,10 @@ export default function EarthScene({ climate, isMobile, onCountryClick }: Props)
 
     // ── Earth uniforms ────────────────────────────────────────────────────────
     const uniforms: Record<string, THREE.IUniform> = {
-      uDayTexture:    { value: dayTex },
-      uCloudsTexture: { value: cloudsTex },
+      uDayTexture:      { value: dayTex },
+      uCloudsTexture:   { value: cloudsTex },
+      uHeatmapTexture:  { value: new THREE.Texture() },
+      uHeatmapOpacity:  { value: 0 },
       uTime:          { value: 0 },
       uTemperature:   { value: climate.temperature },
       uCO2:           { value: climate.co2 },

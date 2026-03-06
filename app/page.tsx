@@ -122,7 +122,7 @@ export default function Home() {
   return (
     <main style={{ width: "100vw", height: "100vh", background: "#000", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0 }}>
-        <EarthScene climate={climate} isMobile={isMobile} onCountryClick={handleCountryClick} />
+        <EarthScene climate={climate} year={year} isMobile={isMobile} onCountryClick={handleCountryClick} />
       </div>
 
       {/* Mobile: stacked header — stats then headline */}

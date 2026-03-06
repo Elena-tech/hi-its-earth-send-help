@@ -16,8 +16,9 @@ export const earthFragmentShader = `
   precision highp float;
 
   uniform sampler2D uDayTexture;
-
   uniform sampler2D uCloudsTexture;
+  uniform sampler2D uHeatmapTexture;
+  uniform float     uHeatmapOpacity; // 0 = off, 1 = full blend
 
   uniform float uTime;
   uniform float uTemperature;   // 0 = pre-industrial, 1 = +4°C
@@ -144,8 +145,14 @@ export const earthFragmentShader = `
       heatAlpha = clamp(localAnomaly * 0.09, 0.0, 0.45);  // less saturated overall
     }
 
-    // Only show on day side
+    // Shader-based heatmap (fallback when no real data)
     base = mix(base, heatColour, heatAlpha * dayFrac * (1.0 - cloudLayer * 0.7));
+
+    // ── Real country heatmap overlay ──────────────────────────────────────────
+    vec4 heatmapSample = texture2D(uHeatmapTexture, vUv);
+    // Only blend on day side, under clouds
+    float heatmapBlend = heatmapSample.a * uHeatmapOpacity * dayFrac * (1.0 - cloudLayer * 0.5);
+    base = mix(base, heatmapSample.rgb, heatmapBlend);
 
     gl_FragColor = vec4(base, 1.0);
   }

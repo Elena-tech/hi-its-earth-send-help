@@ -29,7 +29,7 @@ let countriesCache: CountryFeature[] | null = null;
 
 // ── Loading ───────────────────────────────────────────────────────────────────
 
-function loadCountries(): Promise<CountryFeature[]> {
+export function loadCountries(): Promise<CountryFeature[]> {
   if (countriesCache) return Promise.resolve(countriesCache);
   if (countriesPromise) return countriesPromise;
 
