@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useCallback } from "react";
 import { Scenario } from "@/lib/climateData";
 
 interface Props {
@@ -31,6 +32,31 @@ export default function BottomBar({
   const isFuture = year > 2024;
   const pct = ((year - YEAR_MIN) / (YEAR_MAX - YEAR_MIN)) * 100;
   const scenColour = SCENARIOS.find(s => s.key === scenario)?.colour ?? "#ffd700";
+
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const yearFromX = useCallback((clientX: number) => {
+    if (!trackRef.current) return year;
+    const { left, width } = trackRef.current.getBoundingClientRect();
+    const t = Math.max(0, Math.min(1, (clientX - left) / width));
+    return Math.round(YEAR_MIN + t * (YEAR_MAX - YEAR_MIN));
+  }, [year]);
+  const onMouseDown = (e: React.MouseEvent) => {
+    dragging.current = true;
+    onYearChange(yearFromX(e.clientX));
+    const move = (e: MouseEvent) => { if (dragging.current) onYearChange(yearFromX(e.clientX)); };
+    const up = () => { dragging.current = false; window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+  const onTouchStart = (e: React.TouchEvent) => {
+    dragging.current = true;
+    onYearChange(yearFromX(e.touches[0].clientX));
+    const move = (e: TouchEvent) => { if (dragging.current) onYearChange(yearFromX(e.touches[0].clientX)); };
+    const end = () => { dragging.current = false; window.removeEventListener("touchmove", move); window.removeEventListener("touchend", end); };
+    window.addEventListener("touchmove", move, { passive: true });
+    window.addEventListener("touchend", end);
+  };
 
   return (
     <div style={{
@@ -107,48 +133,50 @@ export default function BottomBar({
       </div>
 
       {/* Row 2: slider */}
-      <style>{`
-        .bb-slider { -webkit-appearance: none; appearance: none; height: 20px; background: transparent; cursor: pointer; outline: none; width: 100%; }
-        .bb-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: transparent; }
-        .bb-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid rgba(255,255,255,0.6); margin-top: -5px; box-shadow: 0 0 6px rgba(255,255,255,0.4); cursor: pointer; }
-        .bb-slider::-moz-range-track { height: 4px; border-radius: 2px; background: transparent; }
-        .bb-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid rgba(255,255,255,0.6); box-shadow: 0 0 6px rgba(255,255,255,0.4); cursor: pointer; }
-      `}</style>
+      {/* Custom slider — full control, no browser quirks */}
       <div style={{ position: "relative", marginBottom: "6px" }}>
-        {/* TODAY marker */}
         <div style={{
-          position: "absolute", left: `${todayPct}%`,
-          top: "-14px", transform: "translateX(-50%)",
-          fontSize: "7px", color: "rgba(255,255,255,0.4)",
-          letterSpacing: "0.12em", pointerEvents: "none",
+          position: "absolute", left: `${todayPct}%`, top: "-14px",
+          transform: "translateX(-50%)", fontSize: "7px",
+          color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em", pointerEvents: "none",
         }}>TODAY</div>
 
-        {/* Visual track — centred in hit zone */}
-        <div style={{
-          position: "absolute", top: "50%", transform: "translateY(-50%)",
-          left: 0, right: 0, height: "4px", borderRadius: "2px",
-          background: `linear-gradient(to right,
-            rgba(255,255,255,0.6) 0%,
-            rgba(255,255,255,0.6) ${todayPct}%,
-            rgba(200,80,40,0.5) ${todayPct}%,
-            rgba(200,80,40,0.5) ${pct}%,
-            rgba(255,255,255,0.1) ${pct}%,
-            rgba(255,255,255,0.1) 100%)`,
-          pointerEvents: "none", zIndex: 1,
-        }} />
-        <div style={{
-          position: "absolute", left: `${todayPct}%`,
-          top: "50%", transform: "translate(-50%, -50%)",
-          width: "1px", height: "12px",
-          background: "rgba(255,255,255,0.2)", pointerEvents: "none", zIndex: 1,
-        }} />
-
-        {/* Input — transparent, thumb centred on track */}
-        <input type="range" min={YEAR_MIN} max={YEAR_MAX} step={1} value={year}
-          onChange={e => onYearChange(Number(e.target.value))}
-          className="bb-slider"
-          style={{ position: "relative", zIndex: 2 }}
-        />
+        <div
+          ref={trackRef}
+          onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
+          style={{ position: "relative", height: "28px", cursor: "pointer", userSelect: "none" }}
+        >
+          {/* Track line — top:50% + translateY(-50%) = always exactly centred */}
+          <div style={{
+            position: "absolute", top: "50%", transform: "translateY(-50%)",
+            left: 0, right: 0, height: "4px", borderRadius: "2px",
+            background: `linear-gradient(to right,
+              rgba(255,255,255,0.6) 0%,
+              rgba(255,255,255,0.6) ${todayPct}%,
+              rgba(200,80,40,0.5) ${todayPct}%,
+              rgba(200,80,40,0.5) ${pct}%,
+              rgba(255,255,255,0.1) ${pct}%,
+              rgba(255,255,255,0.1) 100%)`,
+            pointerEvents: "none",
+          }} />
+          {/* TODAY tick */}
+          <div style={{
+            position: "absolute", left: `${todayPct}%`,
+            top: "50%", transform: "translate(-50%, -50%)",
+            width: "1px", height: "12px",
+            background: "rgba(255,255,255,0.2)", pointerEvents: "none",
+          }} />
+          {/* Thumb — same top/transform as track = guaranteed centred */}
+          <div style={{
+            position: "absolute", left: `${pct}%`, top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "14px", height: "14px", borderRadius: "50%",
+            background: "#fff", border: "2px solid rgba(255,255,255,0.6)",
+            boxShadow: "0 0 8px rgba(255,255,255,0.4)",
+            pointerEvents: "none",
+          }} />
+        </div>
       </div>
 
       {/* Row 3: year labels — positioned to match the linear slider scale */}
