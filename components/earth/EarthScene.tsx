@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import * as THREE from "three";
 import {
   earthVertexShader, earthFragmentShader,
   atmosphereVertexShader, atmosphereFragmentShader,
   starsVertexShader, starsFragmentShader,
 } from "@/lib/shaders";
+import { spherePointToLatLon } from "@/lib/geo/raycaster";
+import { findCountryAt, preloadCountries } from "@/lib/geo/countries";
 
 export interface ClimateState {
   temperature: number;
@@ -17,11 +19,28 @@ export interface ClimateState {
   tempAnomaly: number; // actual °C
 }
 
-interface Props { climate: ClimateState; isMobile?: boolean }
+export interface CountryHit {
+  name: string;
+  lat: number;
+  lon: number;
+}
 
-export default function EarthScene({ climate, isMobile }: Props) {
+interface Props {
+  climate: ClimateState;
+  isMobile?: boolean;
+  onCountryClick?: (country: CountryHit) => void;
+}
+
+export default function EarthScene({ climate, isMobile, onCountryClick }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{ uniforms: Record<string, THREE.IUniform>; animId: number; renderer: THREE.WebGLRenderer } | null>(null);
+  const threeRef = useRef<{ camera: THREE.PerspectiveCamera; earth: THREE.Mesh } | null>(null);
+  const callbackRef = useRef(onCountryClick);
+  callbackRef.current = onCountryClick;
+
+  // Preload country geometry
+  useEffect(() => { preloadCountries(); }, []);
 
   useEffect(() => {
     const el = mountRef.current;
@@ -116,21 +135,82 @@ export default function EarthScene({ climate, isMobile }: Props) {
       })
     ));
 
-    // ── Drag / touch to rotate ────────────────────────────────────────────────
+    // ── Store refs for raycasting ─────────────────────────────────────────────
+    threeRef.current = { camera, earth };
+
+    // ── Drag / touch to rotate + click detection ──────────────────────────────
     let drag = false;
     let prev = { x: 0, y: 0 };
     let vel  = { x: 0, y: 0 };
+    let downPos = { x: 0, y: 0 }; // track pointer-down position for click detection
 
-    const onDown      = (e: MouseEvent)  => { drag = true; prev = { x: e.clientX, y: e.clientY }; };
-    const onUp        = ()               => { drag = false; };
-    const onMove      = (e: MouseEvent)  => {
+    const CLICK_THRESHOLD = 5; // max px movement to count as click
+
+    const handleGlobeClick = (clientX: number, clientY: number) => {
+      if (!threeRef.current) return;
+      const { camera: cam, earth: globe } = threeRef.current;
+
+      // Raycast to find intersection with earth sphere
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, cam);
+
+      const intersects = raycaster.intersectObject(globe);
+      if (intersects.length === 0) return;
+
+      // Convert intersection point to lat/lon (accounting for earth rotation)
+      const localPoint = globe.worldToLocal(intersects[0].point.clone());
+      const { lat, lon } = spherePointToLatLon(localPoint);
+
+      // Look up country (async)
+      findCountryAt(lat, lon).then(country => {
+        if (country && callbackRef.current) {
+          callbackRef.current(country);
+        }
+      });
+    };
+
+    const onDown = (e: MouseEvent) => {
+      drag = true;
+      prev = { x: e.clientX, y: e.clientY };
+      downPos = { x: e.clientX, y: e.clientY };
+    };
+    const onUp = (e: MouseEvent) => {
+      const dx = e.clientX - downPos.x;
+      const dy = e.clientY - downPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < CLICK_THRESHOLD) {
+        handleGlobeClick(e.clientX, e.clientY);
+      }
+      drag = false;
+    };
+    const onMove = (e: MouseEvent) => {
       if (!drag) return;
       vel.y = (e.clientX - prev.x) * 0.005;
       vel.x = (e.clientY - prev.y) * 0.005;
       prev  = { x: e.clientX, y: e.clientY };
     };
-    const onTouchStart = (e: TouchEvent) => { drag = true; prev = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
-    const onTouchEnd   = ()              => { drag = false; };
+    const onTouchStart = (e: TouchEvent) => {
+      drag = true;
+      prev = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      downPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      if (touch) {
+        const dx = touch.clientX - downPos.x;
+        const dy = touch.clientY - downPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < CLICK_THRESHOLD) {
+          handleGlobeClick(touch.clientX, touch.clientY);
+        }
+      }
+      drag = false;
+    };
     const onTouchMove  = (e: TouchEvent) => {
       if (!drag) return;
       e.preventDefault();
@@ -145,6 +225,60 @@ export default function EarthScene({ climate, isMobile }: Props) {
     renderer.domElement.addEventListener("touchend",   onTouchEnd);
     window.addEventListener("mouseup",   onUp);
     window.addEventListener("mousemove", onMove);
+
+    // ── Hover tooltip — show country name on mouseover ────────────────────────
+    const tooltip = tooltipRef.current;
+    let hoverThrottle = 0;
+    let lastHovered = "";
+
+    const onHover = (e: MouseEvent) => {
+      if (drag || !threeRef.current || !tooltip) return;
+
+      // Throttle raycasting to ~60ms
+      const now = performance.now();
+      if (now - hoverThrottle < 60) return;
+      hoverThrottle = now;
+
+      const { camera: cam, earth: globe } = threeRef.current;
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, cam);
+      const intersects = raycaster.intersectObject(globe);
+
+      if (intersects.length === 0) {
+        tooltip.style.opacity = "0";
+        renderer.domElement.style.cursor = "grab";
+        lastHovered = "";
+        return;
+      }
+
+      const localPoint = globe.worldToLocal(intersects[0].point.clone());
+      const { lat, lon } = spherePointToLatLon(localPoint);
+
+      findCountryAt(lat, lon).then(country => {
+        if (!tooltip) return;
+        if (country) {
+          if (country.name !== lastHovered) {
+            tooltip.textContent = country.name;
+            lastHovered = country.name;
+          }
+          tooltip.style.left = `${e.clientX + 14}px`;
+          tooltip.style.top = `${e.clientY - 10}px`;
+          tooltip.style.opacity = "1";
+          renderer.domElement.style.cursor = "pointer";
+        } else {
+          tooltip.style.opacity = "0";
+          renderer.domElement.style.cursor = "grab";
+          lastHovered = "";
+        }
+      });
+    };
+
+    renderer.domElement.addEventListener("mousemove", onHover);
 
     // ── Resize ────────────────────────────────────────────────────────────────
     const onResize = () => {
@@ -172,6 +306,8 @@ export default function EarthScene({ climate, isMobile }: Props) {
       cancelAnimationFrame(animId);
       renderer.dispose();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
+      renderer.domElement.removeEventListener("mousedown",  onDown);
+      renderer.domElement.removeEventListener("mousemove",  onHover);
       window.removeEventListener("mouseup",   onUp);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("resize",    onResize);
@@ -194,5 +330,28 @@ export default function EarthScene({ climate, isMobile }: Props) {
     s.uniforms.uTempAnomaly.value   = climate.tempAnomaly;
   }, [climate]);
 
-  return <div ref={mountRef} style={{ width: "100%", height: "100%" }} />;
+  return (
+    <>
+      <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
+      <div
+        ref={tooltipRef}
+        style={{
+          position: "fixed",
+          pointerEvents: "none",
+          zIndex: 50,
+          opacity: 0,
+          transition: "opacity 0.15s ease",
+          background: "rgba(0,0,0,0.75)",
+          backdropFilter: "blur(8px)",
+          color: "#fff",
+          fontSize: 13,
+          fontFamily: "'Space Grotesk', sans-serif",
+          padding: "5px 10px",
+          borderRadius: 6,
+          border: "1px solid rgba(255,255,255,0.15)",
+          whiteSpace: "nowrap",
+        }}
+      />
+    </>
+  );
 }
