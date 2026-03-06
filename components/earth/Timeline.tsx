@@ -95,7 +95,13 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
 
       {/* Slider track */}
       <style>{`
-        .timeline-slider { -webkit-appearance: none; appearance: none; }
+        .timeline-slider {
+          -webkit-appearance: none; appearance: none;
+          height: 20px; background: transparent; cursor: pointer;
+        }
+        .timeline-slider::-webkit-slider-runnable-track {
+          height: 4px; border-radius: 2px; margin-top: 0;
+        }
         .timeline-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
           width: 14px; height: 14px;
@@ -106,6 +112,9 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
           margin-top: -5px;
           box-shadow: 0 0 6px rgba(255,255,255,0.4);
         }
+        .timeline-slider::-moz-range-track {
+          height: 4px; border-radius: 2px; background: transparent;
+        }
         .timeline-slider::-moz-range-thumb {
           width: 14px; height: 14px;
           border-radius: 50%;
@@ -113,12 +122,6 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
           border: 2px solid rgba(255,255,255,0.6);
           cursor: pointer;
           box-shadow: 0 0 6px rgba(255,255,255,0.4);
-        }
-        .timeline-slider::-webkit-slider-runnable-track {
-          height: 4px; border-radius: 2px;
-        }
-        .timeline-slider::-moz-range-track {
-          height: 4px; border-radius: 2px;
         }
       `}</style>
       <div style={{ position: "relative", marginBottom: "6px" }}>
@@ -154,9 +157,6 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
           className="timeline-slider"
           style={{
             width: "100%",
-            appearance: "none",
-            height: "4px",
-            borderRadius: "2px",
             background: `linear-gradient(to right,
               rgba(255,255,255,0.6) 0%,
               rgba(255,255,255,0.6) ${todayPct}%,
