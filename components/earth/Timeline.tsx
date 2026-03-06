@@ -100,7 +100,7 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
           height: 20px; background: transparent; cursor: pointer;
         }
         .timeline-slider::-webkit-slider-runnable-track {
-          height: 4px; border-radius: 2px; margin-top: 0;
+          height: 4px; border-radius: 2px; background: transparent;
         }
         .timeline-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
@@ -147,6 +147,24 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
           zIndex: 1,
         }} />
 
+        {/* Visual track — centred in the 20px hit zone */}
+        <div style={{
+          position: "absolute",
+          top: "50%", transform: "translateY(-50%)",
+          left: 0, right: 0,
+          height: "4px", borderRadius: "2px",
+          background: `linear-gradient(to right,
+            rgba(255,255,255,0.6) 0%,
+            rgba(255,255,255,0.6) ${todayPct}%,
+            rgba(255,100,50,0.4) ${todayPct}%,
+            rgba(255,100,50,0.4) ${pct}%,
+            rgba(255,255,255,0.1) ${pct}%,
+            rgba(255,255,255,0.1) 100%)`,
+          pointerEvents: "none",
+          zIndex: 1,
+        }} />
+
+        {/* Transparent input on top — provides thumb + interaction */}
         <input
           type="range"
           min={1850}
@@ -157,13 +175,7 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
           className="timeline-slider"
           style={{
             width: "100%",
-            background: `linear-gradient(to right,
-              rgba(255,255,255,0.6) 0%,
-              rgba(255,255,255,0.6) ${todayPct}%,
-              rgba(255,100,50,0.4) ${todayPct}%,
-              rgba(255,100,50,0.4) ${pct}%,
-              rgba(255,255,255,0.1) ${pct}%,
-              rgba(255,255,255,0.1) 100%)`,
+            background: "transparent",
             outline: "none",
             cursor: "pointer",
             position: "relative",
