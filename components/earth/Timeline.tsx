@@ -144,24 +144,35 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
         />
       </div>
 
-      {/* Year labels */}
+      {/* Year labels — positioned to match the linear slider scale */}
       <div style={{
-        display: "flex",
-        justifyContent: "space-between",
+        position: "relative",
+        height: "14px",
         fontSize: "9px",
         color: "rgba(255,255,255,0.3)",
         letterSpacing: "0.1em",
         marginTop: "4px",
       }}>
-        {[1850, 1900, 1950, 2000, 2024, 2050, 2100].map(y => (
-          <span
-            key={y}
-            onClick={() => onYearChange(y)}
-            style={{ cursor: "pointer", color: y === 2024 ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)" }}
-          >
-            {y}
-          </span>
-        ))}
+        {[1850, 1900, 1950, 2000, 2024, 2050, 2100].map((y, i, arr) => {
+          const pos = ((y - 1850) / (2100 - 1850)) * 100;
+          const isFirst = i === 0;
+          const isLast = i === arr.length - 1;
+          return (
+            <span
+              key={y}
+              onClick={() => onYearChange(y)}
+              style={{
+                position: "absolute",
+                left: `${pos}%`,
+                transform: isFirst ? "none" : isLast ? "translateX(-100%)" : "translateX(-50%)",
+                cursor: "pointer",
+                color: y === 2024 ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)",
+              }}
+            >
+              {y}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

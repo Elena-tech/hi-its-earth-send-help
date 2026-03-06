@@ -64,17 +64,15 @@ export default function BottomBar({
           {playing ? "⏸" : "▶"}
         </button>
 
-        {/* Speed */}
+        {/* Speed buttons */}
         {SPEEDS.map(s => (
           <button key={s} onClick={() => onSpeedChange(s)} style={{
-            padding: "6px 10px", borderRadius: "4px", fontSize: "9px",
-            letterSpacing: "0.1em", cursor: "pointer",
-            border: `1px solid ${speed === s ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.12)"}`,
+            padding: "5px 10px", fontSize: "9px", letterSpacing: "0.06em",
+            borderRadius: "5px", cursor: "pointer",
+            border: `1px solid ${speed === s ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.12)"}`,
             background: speed === s ? "rgba(255,255,255,0.12)" : "transparent",
-            color: speed === s ? "#fff" : "rgba(255,255,255,0.35)",
-          }}>
-            {s}×
-          </button>
+            color: speed === s ? "#fff" : "rgba(255,255,255,0.3)",
+          }}>{s}×</button>
         ))}
 
         {/* Spacer */}
@@ -138,17 +136,26 @@ export default function BottomBar({
         />
       </div>
 
-      {/* Row 3: year labels */}
+      {/* Row 3: year labels — positioned to match the linear slider scale */}
       <div style={{
-        display: "flex", justifyContent: "space-between",
+        position: "relative",
+        height: "14px",
         fontSize: "8px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em",
       }}>
-        {[1850, 1900, 1950, 2000, 2024, 2050, 2100].map(y => (
-          <span key={y} onClick={() => onYearChange(y)} style={{
-            cursor: "pointer",
-            color: y === 2024 ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.28)",
-          }}>{y}</span>
-        ))}
+        {[1850, 1900, 1950, 2000, 2024, 2050, 2100].map((y, i, arr) => {
+          const pos = ((y - YEAR_MIN) / (YEAR_MAX - YEAR_MIN)) * 100;
+          const isFirst = i === 0;
+          const isLast = i === arr.length - 1;
+          return (
+            <span key={y} onClick={() => onYearChange(y)} style={{
+              position: "absolute",
+              left: `${pos}%`,
+              transform: isFirst ? "none" : isLast ? "translateX(-100%)" : "translateX(-50%)",
+              cursor: "pointer",
+              color: y === 2024 ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.28)",
+            }}>{y}</span>
+          );
+        })}
       </div>
     </div>
   );

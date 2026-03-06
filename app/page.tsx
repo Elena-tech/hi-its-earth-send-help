@@ -3,8 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ClimateState } from "@/components/earth/EarthScene";
+import type { CountryHit } from "@/components/earth/EarthScene";
 import BottomBar from "@/components/earth/BottomBar";
 import EventCard from "@/components/earth/EventCard";
+import CountryPanel from "@/components/earth/CountryPanel";
+import type { SelectedCountry } from "@/components/earth/CountryPanel";
 import { getClimateForYear, Scenario, YEAR_MIN, YEAR_MAX } from "@/lib/climateData";
 import { getEventsForYear, ClimateEvent } from "@/lib/events";
 
@@ -17,6 +20,11 @@ export default function Home() {
   const [speed, setSpeed]             = useState(5);
   const [activeEvent, setActiveEvent] = useState<ClimateEvent | null>(null);
   const [isMobile, setIsMobile]       = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<SelectedCountry | null>(null);
+
+  const handleCountryClick = useCallback((country: CountryHit) => {
+    setSelectedCountry({ name: country.name, lat: country.lat, lon: country.lon });
+  }, []);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -114,7 +122,7 @@ export default function Home() {
   return (
     <main style={{ width: "100vw", height: "100vh", background: "#000", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0 }}>
-        <EarthScene climate={climate} isMobile={isMobile} />
+        <EarthScene climate={climate} isMobile={isMobile} onCountryClick={handleCountryClick} />
       </div>
 
       {/* Mobile: stacked header — stats then headline */}
@@ -184,6 +192,16 @@ export default function Home() {
 
       {/* Event card */}
       <EventCard event={activeEvent} />
+
+      {/* Country detail panel */}
+      {selectedCountry && (
+        <CountryPanel
+          country={selectedCountry}
+          currentYear={year}
+          scenario={scenario}
+          onClose={() => setSelectedCountry(null)}
+        />
+      )}
 
       {/* Unified bottom bar */}
       <BottomBar
