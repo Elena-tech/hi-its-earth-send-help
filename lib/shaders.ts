@@ -115,17 +115,10 @@ export const earthFragmentShader = `
     // Regional anomaly: Arctic amplification + land/ocean differential
     float latDeg  = (vUv.y - 0.5) * 180.0;               // –90 (S) to +90 (N)
     float absLat  = abs(latDeg) / 90.0;                   // 0=equator, 1=pole
-    // Arctic warms 3x faster, Antarctic 2x
-    float polarFactor = 1.0 + absLat * absLat * 2.5;
-    // Land warms 1.5x faster than ocean
-    float landFactor  = mix(1.0, 1.5, isLand);
     // Small regional noise so it doesn't look uniform
     float regionNoise = fbm(vUv * 4.0 + vec2(0.7, 0.3)) * 0.4 - 0.2;
-
-    // Local anomaly in °C — scale amplifiers down so 1°C looks like 1°C
-    // polarFactor: poles warm ~2x faster (was 3.5x — too aggressive)
+    // poles warm ~2x faster, land ~1.2x faster than ocean
     float scaledPolar = 1.0 + absLat * absLat * 1.0;
-    // landFactor: land warms ~1.2x faster (was 1.5x)
     float scaledLand  = mix(1.0, 1.2, isLand);
     float localAnomaly = uTempAnomaly * scaledPolar * scaledLand + regionNoise * abs(uTempAnomaly) * 0.3;
 
