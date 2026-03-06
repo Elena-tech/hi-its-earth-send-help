@@ -94,6 +94,33 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
       </div>
 
       {/* Slider track */}
+      <style>{`
+        .timeline-slider { -webkit-appearance: none; appearance: none; }
+        .timeline-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 14px; height: 14px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 2px solid rgba(255,255,255,0.6);
+          cursor: pointer;
+          margin-top: -5px;
+          box-shadow: 0 0 6px rgba(255,255,255,0.4);
+        }
+        .timeline-slider::-moz-range-thumb {
+          width: 14px; height: 14px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 2px solid rgba(255,255,255,0.6);
+          cursor: pointer;
+          box-shadow: 0 0 6px rgba(255,255,255,0.4);
+        }
+        .timeline-slider::-webkit-slider-runnable-track {
+          height: 4px; border-radius: 2px;
+        }
+        .timeline-slider::-moz-range-track {
+          height: 4px; border-radius: 2px;
+        }
+      `}</style>
       <div style={{ position: "relative", marginBottom: "6px" }}>
         {/* Today marker */}
         <div style={{
@@ -124,6 +151,7 @@ export default function Timeline({ year, scenario, onYearChange, onScenarioChang
           step={1}
           value={year}
           onChange={e => onYearChange(Number(e.target.value))}
+          className="timeline-slider"
           style={{
             width: "100%",
             appearance: "none",

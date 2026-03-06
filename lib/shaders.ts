@@ -117,20 +117,25 @@ export const earthFragmentShader = `
     // Small regional noise so it doesn't look uniform
     float regionNoise = fbm(vUv * 4.0 + vec2(0.7, 0.3)) * 0.4 - 0.2;
 
-    // Local anomaly in °C
-    float localAnomaly = uTempAnomaly * polarFactor * landFactor + regionNoise * abs(uTempAnomaly);
+    // Local anomaly in °C — scale amplifiers down so 1°C looks like 1°C
+    // polarFactor: poles warm ~2x faster (was 3.5x — too aggressive)
+    float scaledPolar = 1.0 + absLat * absLat * 1.0;
+    // landFactor: land warms ~1.2x faster (was 1.5x)
+    float scaledLand  = mix(1.0, 1.2, isLand);
+    float localAnomaly = uTempAnomaly * scaledPolar * scaledLand + regionNoise * abs(uTempAnomaly) * 0.3;
 
     // Map anomaly to heatmap colour
-    // -1°C → blue, 0 → transparent, +1 → yellow, +2 → orange, +3+ → red
+    // colour scale: denominator raised so red only appears at genuinely high anomalies
+    // 0→1.5°C = yellow, 1.5→3°C = orange, 3°C+ = red
     vec3 heatColour;
     float heatAlpha;
     if (localAnomaly < 0.0) {
       // Cool anomaly — blue tint
       heatColour = vec3(0.1, 0.3, 1.0);
-      heatAlpha  = clamp(-localAnomaly * 0.3, 0.0, 0.25);
+      heatAlpha  = clamp(-localAnomaly * 0.2, 0.0, 0.20);
     } else {
       // Warm anomaly — yellow → orange → red
-      float t = clamp(localAnomaly / 4.0, 0.0, 1.0);
+      float t = clamp(localAnomaly / 7.0, 0.0, 1.0);  // red only at ~7°C equiv
       vec3 yellow = vec3(1.0, 0.95, 0.0);
       vec3 orange = vec3(1.0, 0.40, 0.0);
       vec3 red    = vec3(0.85, 0.0, 0.0);
@@ -138,7 +143,7 @@ export const earthFragmentShader = `
       if (t < 0.33)      heatColour = mix(yellow, orange, t / 0.33);
       else if (t < 0.66) heatColour = mix(orange, red,   (t - 0.33) / 0.33);
       else               heatColour = mix(red,    dark,  (t - 0.66) / 0.34);
-      heatAlpha = clamp(localAnomaly * 0.18, 0.0, 0.55);
+      heatAlpha = clamp(localAnomaly * 0.09, 0.0, 0.45);  // less saturated overall
     }
 
     // Only show on day side
